@@ -1,3 +1,5 @@
+# RawFlight has been closed permanently. 
+
 # About RawFlight 
 
 RawFlight is a revived from 2020 project of community flight tracking system. 
