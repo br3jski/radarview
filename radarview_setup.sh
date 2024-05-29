@@ -17,7 +17,7 @@ radarview_create_service() {
   [Service]
   Type=simple
   ExecStartPre=/bin/sleep 60
-  ExecStart=/opt/radarview.py
+  ExecStart=/usr/bin/python3 /opt/radarview.py
   User=root
   Restart=on-failure
   StartLimitBurst=2
