@@ -1,16 +1,16 @@
 #!/bin/bash
 
-rawflight_create_config() {
-  echo "Creating rawflight config file..."
-  wget -O https://raw.githubusercontent.com/br3jski/rawflight_eu/main/rawflight.py /opt/rawflight.py
-  chmod +x /opt/rawflight.py
+radarview_create_config() {
+  echo "Creating radarview config file..."
+  wget -O https://raw.githubusercontent.com/br3jski/radarview/main/radarview.py /opt/radarview.py
+  chmod +x /opt/radarview.py
 
-rawflight_create_service() {
+radarview_create_service() {
   sleep 3
-  echo "Creating RawFlight Service."
-  touch rawflight.service
+  echo "Creating RadarView Service."
+  touch radarview.service
   echo "[Unit]
-  Description=RawFlight Python service
+  Description=RadarView Python service
   After=network-online.target
 
   [Timer]
@@ -18,19 +18,19 @@ rawflight_create_service() {
 
   [Service]
   Type=simple
-  ExecStart=opt/rawflight.py
+  ExecStart=/opt/radarview.py
   user=root
   Restart=on-failure
   StartLimitBurst=2
 
   [Install]
   WantedBy=multi-user.target
-" > rawflight.service
+" > radarview.service
   echo "Service created. Enabling it."
-  mv rawflight.service /etc/systemd/system
+  mv radarview.service /etc/systemd/system
   systemctl daemon-reload
-  service rawflight start
-  systemctl enable rawflight
+  service radarview start
+  systemctl enable radarview
 }
 
 exiter() {
@@ -56,15 +56,15 @@ if [ "$(whoami)" != "root" ]
 
   else
     if [ -x /usr/bin/dump1090-fa ] || [ -x /usr/bin/dump1090-mutability ] || [ -x /usr/bin/dump1090 ]; then {
-      rawflight_create_config
-      rawflight_create_service
+      radarview_create_config
+      radarview_create_service
     } else {
       echo "Dump1090 / reADSB are not installed. Please install it first. Do you want to install it now? (y/n)"
       read key
       case "$key" in
           "y") install_readsb
-                rawflight_create_config
-                rawflight_create_service;;
+                radarview_create_config
+                radarview_create_service;;
           "n") exiter;;
           *) wrongkey;;
       esac
