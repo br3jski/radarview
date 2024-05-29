@@ -14,7 +14,7 @@ def forward_data(source_host, source_port, dest_host, dest_port):
             # Create the destination socket
             dest_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             dest_socket.connect((dest_host, dest_port))
-            print("Connection to RawFlight on port 8787 established")
+            print("Connection to RawFlight on port 48581 established")
             connection_established = True
 
             # Forward data
