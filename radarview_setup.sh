@@ -14,13 +14,11 @@ radarview_create_service() {
   Description=RadarView Python service
   After=network-online.target
 
-  [Timer]
-  OnBootSec=60
-
   [Service]
   Type=simple
+  ExecStartPre=/bin/sleep 60
   ExecStart=/opt/radarview.py
-  user=root
+  User=root
   Restart=on-failure
   StartLimitBurst=2
 
