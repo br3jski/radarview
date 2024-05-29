@@ -49,4 +49,4 @@ def forward_data(source_host, source_port, dest_host, dest_port):
         time.sleep(3)  # Wait 3 seconds before the next attempt
 
 if __name__ == "__main__":
-    forward_data("127.0.0.1", 30005, "rawflight.eu", 8787)
+    forward_data("127.0.0.1", 30003, "feed.ads-b.pro", 48581)
