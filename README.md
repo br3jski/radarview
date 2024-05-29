@@ -1,6 +1,6 @@
 # RawFlight revies as RadarView. 
 
-# About RadarView 
+# About RadarView and what the heck happened to RawFlight?!
 
 RawFlight was a revived from 2020 project of community flight tracking system. Now, one developer, Bruno, revived this project and renamed it to RadarView
 For now, RadarView is in closed beta stage and access to RawFlight is granted to feeders only. 
