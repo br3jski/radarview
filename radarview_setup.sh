@@ -49,7 +49,6 @@ install_readsb() {
   #echo "Installing reADSB..."
   #echo "WARNING! After readsb installation, your feeder will be rebooted. After reboot, please run this script again!"
   #bash -c "$(wget -O - https://github.com/wiedehopf/adsb-scripts/raw/master/readsb-install.sh)"
-
 }
 
 if [ "$(whoami)" != "root" ]
