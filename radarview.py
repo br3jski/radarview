@@ -29,13 +29,13 @@ def forward_data(source_host, source_port, dest_host, dest_port):
 
         except socket.timeout:
             if not connection_established:
-                print("Cannot connect to RawFlight - got timeout")
+                print("Cannot connect to RadarView - got timeout")
                 connection_established = True  # Protects from displaying the message again
         except socket.error as e:
             if e.errno == socket.errno.ECONNREFUSED:
-                print("Cannot connect to RawFlight - connection refused")
+                print("Cannot connect to RadarView - connection refused")
             elif e.errno == socket.errno.EPIPE:
-                print("Cannot connect to RawFlight - broken pipe")
+                print("Cannot connect to RadarView - broken pipe")
             else:
                 print(f"Unexpected error: {e}")
             connection_established = False  # Allows to retry the connection in the next iteration 
