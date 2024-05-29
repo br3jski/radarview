@@ -2,8 +2,9 @@
 
 radarview_create_config() {
   echo "Creating radarview config file..."
-  wget -O https://raw.githubusercontent.com/br3jski/radarview/main/radarview.py /opt/radarview.py
+  wget -O /opt/radarview.py https://raw.githubusercontent.com/br3jski/radarview/main/radarview.py
   chmod +x /opt/radarview.py
+}
 
 radarview_create_service() {
   sleep 3
@@ -52,22 +53,27 @@ install_readsb() {
 }
 
 if [ "$(whoami)" != "root" ]
-  then echo "Please run this script as admin (use sudo or sudo su)"
-
+  then 
+    echo "Please run this script as admin (use sudo or sudo su)"
   else
-    if [ -x /usr/bin/dump1090-fa ] || [ -x /usr/bin/dump1090-mutability ] || [ -x /usr/bin/dump1090 ]; then {
+    if [ -x /usr/bin/dump1090-fa ] || [ -x /usr/bin/dump1090-mutability ] || [ -x /usr/bin/dump1090 ]; then
       radarview_create_config
       radarview_create_service
-    } else {
+    else
       echo "Dump1090 / reADSB are not installed. Please install it first. Do you want to install it now? (y/n)"
       read key
       case "$key" in
-          "y") install_readsb
-                radarview_create_config
-                radarview_create_service;;
-          "n") exiter;;
-          *) wrongkey;;
+          "y") 
+            install_readsb
+            radarview_create_config
+            radarview_create_service
+            ;;
+          "n") 
+            exiter
+            ;;
+          *) 
+            wrongkey
+            ;;
       esac
-    }
     fi
 fi
