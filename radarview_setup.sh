@@ -45,11 +45,11 @@ wrongkey() {
 install_dump() { 
   # Do nothing, function to be implemented
   echo "Installing dump1090..."
-  wget https://www.flightaware.com/adsb/piaware/files/packages/pool/piaware/f/flightaware-apt-repository/flightaware-apt-repository_1.1_all.deb -O /opt/farepo.deb
-  dpkg -i /opt/farepo.deb
-  apt update
-  apt install dump1090-fa
-  rm /opt/farepo.deb
+  sudo wget https://www.flightaware.com/adsb/piaware/files/packages/pool/piaware/f/flightaware-apt-repository/flightaware-apt-repository_1.1_all.deb -O /opt/farepo.deb
+  sudo dpkg -i /opt/farepo.deb
+  sudo apt update
+  sudo apt install dump1090-fa
+  sudo rm /opt/farepo.deb
  
 }
 
