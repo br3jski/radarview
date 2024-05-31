@@ -42,12 +42,15 @@ wrongkey() {
   exit 1
 }
 
-install_readsb() { 
+install_dump() { 
   # Do nothing, function to be implemented
-  #echo "Installing reADSB..."
-  #echo "WARNING! After readsb installation, your feeder will be rebooted. After reboot, please run this script again!"
-  #bash -c "$(wget -O - https://github.com/wiedehopf/adsb-scripts/raw/master/readsb-install.sh)"
-  :
+  echo "Installing dump1090..."
+  wget https://www.flightaware.com/adsb/piaware/files/packages/pool/piaware/f/flightaware-apt-repository/flightaware-apt-repository_1.1_all.deb -O /opt/farepo.deb
+  dpkg -i /opt/farepo.deb
+  apt update
+  apt install dump1090-fa
+  rm /opt/farepo.deb
+ 
 }
 
 if [ "$(whoami)" != "root" ]
@@ -62,7 +65,7 @@ if [ "$(whoami)" != "root" ]
       read key
       case "$key" in
           "y") 
-            install_readsb
+            install_dump
             radarview_create_config
             radarview_create_service
             ;;
