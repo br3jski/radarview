@@ -83,33 +83,33 @@ install_dump() {
 
 clean_up() {
   echo "Cleaning up..."
-  [ -f /opt/radarview.py ] && rm /opt/radarview.py
   [ -f /opt/farepo.deb ] && rm /opt/farepo.deb
 }
 
 if [ "$(whoami)" != "root" ]; then
   echo "Please run this script as admin (use sudo or sudo su)"
   exit 1
-else
-  if [ -x /usr/bin/dump1090-fa ] || [ -x /usr/bin/dump1090-mutability ] || [ -x /usr/bin/dump1090 ] || [ -x /usr/bin/readsb ]; then
-    radarview_create_config
-    radarview_create_service
-  else
-    echo "Dump1090 / reADSB are not installed. Please install it first. Do you want to install it now? (y/n)"
-    read key
-    case "$key" in
-      "y") 
-        install_dump
-        radarview_create_config
-        radarview_create_service
-        ;;
-      "n") 
-        exiter
-        ;;
-      *) 
-        wrongkey
-        ;;
-    esac
-  fi
 fi
+
+if [ -x /usr/bin/dump1090-fa ] || [ -x /usr/bin/dump1090-mutability ] || [ -x /usr/bin/dump1090 ] || [ -x /usr/bin/readsb ]; then
+  radarview_create_config
+  radarview_create_service
+else
+  echo "Dump1090 / reADSB are not installed. Please install it first. Do you want to install it now? (y/n)"
+  read key
+  case "$key" in
+    "y") 
+      install_dump
+      radarview_create_config
+      radarview_create_service
+      ;;
+    "n") 
+      exiter
+      ;;
+    *) 
+      wrongkey
+      ;;
+  esac
+fi
+
 clean_up
