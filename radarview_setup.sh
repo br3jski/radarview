@@ -1,4 +1,27 @@
 #!/bin/bash
+validate_token() {
+  local token="$1"
+  # Sprawdzamy, czy token zaczyna się od "ADS-" i ma łącznie 36 znaków
+  # (4 znaki "ADS-" + 32 znaki heksadecymalne)
+  if [[ $token =~ ^ADS-[a-f0-9]{32}$ ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+get_user_token() {
+  while true; do
+    echo "Please enter your RadarView token (format: ADS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX):"
+    read token
+    if validate_token "$token"; then
+      echo "$token"
+      return 0
+    else
+      echo "Invalid token format. Please try again."
+    fi
+  done
+}
 
 radarview_create_config() {
   echo "Creating radarview config file..."
@@ -8,7 +31,15 @@ radarview_create_config() {
     exit 1
   fi
   chmod +x /opt/radarview.py
+  
+  # Pobierz token od użytkownika
+  user_token=$(get_user_token)
+  
+  # Dodaj token bezpośrednio do skryptu Python
+  sed -i "s/USER_TOKEN = ''/USER_TOKEN = '$user_token'/" /opt/radarview.py
 }
+
+
 
 radarview_create_service() {
   sleep 3
