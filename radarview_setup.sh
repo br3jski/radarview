@@ -11,10 +11,22 @@ validate_token() {
 }
 
 get_user_token() {
+  echo "Starting get_user_token function..."
   while true; do
     echo "Please enter your RadarView token (format: ADS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX):"
-    read token
+    token=""
+    while IFS= read -r -n1 char; do
+      if [[ $char == $'\0' ]]; then
+        break
+      fi
+      token+="$char"
+      echo -n "*"
+    done
+    echo
+    echo "Received input: $token"
+    echo "Validating token..."
     if validate_token "$token"; then
+      echo "Token validated successfully."
       echo "$token"
       return 0
     else
