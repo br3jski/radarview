@@ -24,19 +24,24 @@ get_user_token() {
 }
 
 radarview_create_config() {
+  echo "Starting radarview_create_config function..."
   echo "Creating radarview config file..."
   wget -O /opt/radarview.py https://raw.githubusercontent.com/br3jski/radarview/main/radarview.py
   if [ $? -ne 0 ]; then
     echo "Failed to download radarview.py"
     exit 1
   fi
+  echo "radarview.py downloaded successfully."
   chmod +x /opt/radarview.py
+  echo "Permissions set for radarview.py"
   
-  # Pobierz token od użytkownika
+  echo "About to call get_user_token function..."
   user_token=$(get_user_token)
+  echo "Received token: $user_token"
   
-  # Dodaj token bezpośrednio do skryptu Python
+  echo "Updating radarview.py with the token..."
   sed -i "s/USER_TOKEN = ''/USER_TOKEN = '$user_token'/" /opt/radarview.py
+  echo "radarview.py updated with token."
 }
 
 
