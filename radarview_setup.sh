@@ -45,7 +45,8 @@ radarview_create_config() {
   chmod +x /opt/radarview.py
   
   echo "Updating radarview.py with the token..."
-  sed -i "s/USER_TOKEN = ''/USER_TOKEN = '$user_token'/" /opt/radarview.py
+  escaped_token=$(printf '%s\n' "$user_token" | sed 's:[][\/.^$*]:\\&:g')
+  sed -i "s|USER_TOKEN = ''|USER_TOKEN = '$escaped_token'|" /opt/radarview.py
   echo "radarview.py updated with token."
 }
 
