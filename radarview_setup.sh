@@ -44,17 +44,21 @@ radarview_create_config() {
   fi
   chmod +x /opt/radarview.py
   
+  echo "Content of /opt/radarview.py before modification:"
+  grep USER_TOKEN /opt/radarview.py
+  
   echo "Updating radarview.py with the token..."
-  python3 -c "
+  python3 << EOF
 import re
-user_token = '$user_token'
+
+user_token = """$user_token"""
 with open('/opt/radarview.py', 'r') as file:
     content = file.read()
-content = re.sub(r\"USER_TOKEN = '.*'\", f\"USER_TOKEN = '{user_token}'\", content)
+content = re.sub(r"USER_TOKEN = '.*'", f"USER_TOKEN = '{user_token}'", content)
 with open('/opt/radarview.py', 'w') as file:
     file.write(content)
 print('Python script executed successfully')
-"
+EOF
   
   # Weryfikacja
   if grep -q "USER_TOKEN = '$user_token'" /opt/radarview.py; then
@@ -65,7 +69,7 @@ print('Python script executed successfully')
   fi
   
   echo "Content of /opt/radarview.py after modification:"
-  cat /opt/radarview.py | grep USER_TOKEN
+  grep USER_TOKEN /opt/radarview.py
 }
 
 radarview_create_service() {
