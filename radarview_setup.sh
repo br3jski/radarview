@@ -38,7 +38,7 @@ user_token=$(get_user_token)
 radarview_create_config() {
   echo "Creating radarview config file..."
   #wget -O /opt/radarview.py https://raw.githubusercontent.com/br3jski/radarview/main/radarview.py
-  cp ./radarview.py /opt/radarview.py
+  cp /opt/radarview/radarview.py /opt/radarview.py
   if [ $? -ne 0 ]; then
     echo "Failed to download radarview.py"
     exit 1
@@ -46,8 +46,9 @@ radarview_create_config() {
   chmod +x /opt/radarview.py
   
   echo "Updating radarview.py with the token..."
-  escaped_token=$(printf '%s\n' "$user_token" | sed 's:[][\/.^$*]:\\&:g')
-  sed -i "s|USER_TOKEN = ''|USER_TOKEN = '$escaped_token'|" /opt/radarview.py
+  export USER_TOKEN="$user_token"
+  sed -i "s/USER_TOKEN = ''/USER_TOKEN = '$USER_TOKEN'/" /opt/radarview.py
+  unset USER_TOKEN
   echo "radarview.py updated with token."
 }
 
