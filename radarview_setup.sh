@@ -47,15 +47,14 @@ radarview_create_config() {
   echo "Updating radarview.py with the token..."
   python3 -c "
 import re
-import os
-
-user_token = os.environ['USER_TOKEN']
+user_token = '$user_token'
 with open('/opt/radarview.py', 'r') as file:
     content = file.read()
 content = re.sub(r\"USER_TOKEN = '.*'\", f\"USER_TOKEN = '{user_token}'\", content)
 with open('/opt/radarview.py', 'w') as file:
     file.write(content)
-" USER_TOKEN="$user_token"
+print('Python script executed successfully')
+"
   
   # Weryfikacja
   if grep -q "USER_TOKEN = '$user_token'" /opt/radarview.py; then
@@ -66,7 +65,7 @@ with open('/opt/radarview.py', 'w') as file:
   fi
   
   echo "Content of /opt/radarview.py after modification:"
-  cat /opt/radarview.py
+  cat /opt/radarview.py | grep USER_TOKEN
 }
 
 radarview_create_service() {
