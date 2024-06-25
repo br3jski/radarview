@@ -24,7 +24,9 @@ get_user_token() {
 radarview_create_config() {
   local user_token="$1"
   echo "Configuring RadarView..."
-  cp /opt/radarview/radarview.py /opt/radarview.py
+  # Download radarview.py from GitHub
+  wget -O https://raw.githubusercontent.com/br3jski/radarview/main/radarview.py -O /opt/radarview.py
+  #cp /opt/radarview/radarview.py /opt/radarview.py
   if [ $? -ne 0 ]; then
     echo "Failed to copy radarview.py"
     exit 1
