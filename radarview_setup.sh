@@ -11,9 +11,7 @@ validate_token() {
 
 get_user_token() {
   while true; do
-    echo "Please enter your RadarView token. You should get it during registration and you can find it in your account settings."
-    echo "If you do not have token, please register at https://ads-b.pro"
-    read -p " Token (format: ADS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX): " token
+    read -p "Please enter your RadarView token (format: ADS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX): " token
     if validate_token "$token"; then
       echo "$token"
       return 0
