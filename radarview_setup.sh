@@ -37,7 +37,8 @@ user_token=$(get_user_token)
 
 radarview_create_config() {
   echo "Creating radarview config file..."
-  wget -O /opt/radarview.py https://raw.githubusercontent.com/br3jski/radarview/main/radarview.py
+  #wget -O /opt/radarview.py https://raw.githubusercontent.com/br3jski/radarview/main/radarview.py
+  cp ./radarview.py /opt/radarview.py
   if [ $? -ne 0 ]; then
     echo "Failed to download radarview.py"
     exit 1
