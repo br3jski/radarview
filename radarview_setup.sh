@@ -1,115 +1,121 @@
 #!/bin/bash
 
+validate_token() {
+  local token="$1"
+  if [[ $token =~ ^ADS-[a-f0-9]{32}$ ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+get_user_token() {
+  while true; do
+    read -p "Please enter your RadarView token (format: ADS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX): " token
+    if validate_token "$token"; then
+      echo "$token"
+      return 0
+    else
+      echo "Invalid token format. Please try again."
+    fi
+  done
+}
+
 radarview_create_config() {
-  echo "Creating radarview config file..."
-  wget -O /opt/radarview.py https://raw.githubusercontent.com/br3jski/radarview/main/radarview.py
+  local user_token="$1"
+  cp /opt/radarview/radarview.py /opt/radarview.py
   if [ $? -ne 0 ]; then
-    echo "Failed to download radarview.py"
+    echo "Failed to copy radarview.py"
     exit 1
   fi
   chmod +x /opt/radarview.py
+  
+  python3 << EOF
+import re
+
+user_token = """$user_token"""
+with open('/opt/radarview.py', 'r') as file:
+    content = file.read()
+content = re.sub(r"USER_TOKEN = '.*'", f"USER_TOKEN = '{user_token}'", content)
+with open('/opt/radarview.py', 'w') as file:
+    file.write(content)
+EOF
+  
+  if ! grep -q "USER_TOKEN = '$user_token'" /opt/radarview.py; then
+    echo "Failed to update radarview.py with token. Please check the file manually."
+    exit 1
+  fi
 }
 
 radarview_create_service() {
-  sleep 3
-  echo "Creating RadarView Service."
   SERVICE_FILE="/etc/systemd/system/radarview.service"
-  if [ -f "$SERVICE_FILE" ]; then
-    echo "radarview.service already exists. Overwriting..."
-  fi
-  echo "[Unit]
-  Description=RadarView Python service
-  After=network-online.target
+  cat > "$SERVICE_FILE" << EOF
+[Unit]
+Description=RadarView Python service
+After=network-online.target
 
-  [Service]
-  Type=simple
-  ExecStartPre=/bin/sleep 60
-  ExecStart=/usr/bin/python3 /opt/radarview.py
-  User=root
-  Restart=on-failure
-  StartLimitBurst=2
+[Service]
+Type=simple
+ExecStartPre=/bin/sleep 60
+ExecStart=/usr/bin/python3 /opt/radarview.py
+User=root
+Restart=on-failure
+StartLimitBurst=2
 
-  [Install]
-  WantedBy=multi-user.target
-" > radarview.service
-  mv radarview.service "$SERVICE_FILE"
+[Install]
+WantedBy=multi-user.target
+EOF
+
   systemctl daemon-reload
-  if [ $? -ne 0 ]; then
-    echo "Failed to reload systemd daemon"
-    exit 1
-  fi
   systemctl start radarview
-  if [ $? -ne 0 ]; then
-    echo "Failed to start radarview service"
-    exit 1
-  fi
   systemctl enable radarview
-  if [ $? -ne 0 ]; then
-    echo "Failed to enable radarview service"
-    exit 1
-  fi
-}
-
-exiter() {
-  echo "User refused installing Dump1090. Exiting now"
-  exit 1
-}
-
-wrongkey() {
-  echo "You clicked wrong button. Exiting now."
-  exit 1
 }
 
 install_dump() { 
-  echo "Installing dump1090..."
   wget https://www.flightaware.com/adsb/piaware/files/packages/pool/piaware/f/flightaware-apt-repository/flightaware-apt-repository_1.1_all.deb -O /opt/farepo.deb
-  if [ $? -ne 0 ]; then
-    echo "Failed to download flightaware-apt-repository"
-    exit 1
-  fi
   dpkg -i /opt/farepo.deb
-  if [ $? -ne 0 ]; then
-    echo "Failed to install flightaware-apt-repository"
-    exit 1
-  fi
   apt update
   apt install -y dump1090-fa
-  if [ $? -ne 0 ]; then
-    echo "Failed to install dump1090-fa"
-    exit 1
-  fi
   rm /opt/farepo.deb
 }
 
 clean_up() {
-  echo "Cleaning up..."
   [ -f /opt/farepo.deb ] && rm /opt/farepo.deb
 }
 
+# Main script
+echo "Welcome to the RadarView setup script!"
+
 if [ "$(whoami)" != "root" ]; then
-  echo "Please run this script as admin (use sudo or sudo su)"
+  echo "Please run this script as root (use sudo or sudo su)"
   exit 1
 fi
 
+user_token=$(get_user_token)
+
 if [ -x /usr/bin/dump1090-fa ] || [ -x /usr/bin/dump1090-mutability ] || [ -x /usr/bin/dump1090 ] || [ -x /usr/bin/readsb ]; then
-  radarview_create_config
+  radarview_create_config "$user_token"
   radarview_create_service
 else
-  echo "Dump1090 / reADSB are not installed. Please install it first. Do you want to install it now? (y/n)"
-  read key
+  echo "Dump1090 / reADSB are not installed. Do you want to install it now? (y/n)"
+  read -r key
   case "$key" in
-    "y") 
+    y|Y) 
       install_dump
-      radarview_create_config
+      radarview_create_config "$user_token"
       radarview_create_service
       ;;
-    "n") 
-      exiter
+    n|N) 
+      echo "User refused installing Dump1090. Exiting now"
+      exit 1
       ;;
     *) 
-      wrongkey
+      echo "Invalid input. Exiting now."
+      exit 1
       ;;
   esac
 fi
 
 clean_up
+
+echo "RadarView setup completed successfully."

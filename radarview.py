@@ -1,6 +1,10 @@
 #!/usr/bin/python3
 import socket
 import time
+import sys
+
+# Token użytkownika będzie wstawiany tutaj przez skrypt instalacyjny
+USER_TOKEN = ''
 
 def forward_data(source_host, source_port, dest_host, dest_port):
     connection_established = False
@@ -15,6 +19,15 @@ def forward_data(source_host, source_port, dest_host, dest_port):
             dest_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             dest_socket.connect((dest_host, dest_port))
             print("Connection to Radarview on port 48581 established")
+            
+            # Send the user token
+            if USER_TOKEN:
+                dest_socket.sendall(f"TOKEN:{USER_TOKEN}\n".encode('utf-8'))
+                print("User token sent")
+            else:
+                print("Error: User token not set")
+                sys.exit(1)
+            
             connection_established = True
 
             # Forward data
@@ -23,9 +36,7 @@ def forward_data(source_host, source_port, dest_host, dest_port):
                 if not data:
                     print("Did not receive more data from source.") 
                     break  # Break the loop if no more data
-                #print(f"Received data: {data[:100]}...")  # Print data for debugging
                 dest_socket.sendall(data)
-                #print("Data sent to the target.")
 
         except socket.timeout:
             if not connection_established:
@@ -49,4 +60,7 @@ def forward_data(source_host, source_port, dest_host, dest_port):
         time.sleep(3)  # Wait 3 seconds before the next attempt
 
 if __name__ == "__main__":
+    if not USER_TOKEN:
+        print("Error: User token not set. Please run the installation script again.")
+        sys.exit(1)
     forward_data("127.0.0.1", 30003, "feed.ads-b.pro", 48581)
