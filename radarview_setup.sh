@@ -23,7 +23,7 @@ get_user_token() {
 
 radarview_create_config() {
   local user_token="$1"
-  cp radarview.py /opt/radarview.py
+  cp radarview/radarview.py /opt/radarview.py
   if [ $? -ne 0 ]; then
     echo "Failed to copy radarview.py"
     exit 1
