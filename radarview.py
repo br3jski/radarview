@@ -7,7 +7,6 @@ import sys
 USER_TOKEN = ''
 
 def forward_data(source_host, source_port, dest_host, dest_port):
-    connection_established = False
     while True:
         try:
             # Create the source socket
@@ -18,17 +17,11 @@ def forward_data(source_host, source_port, dest_host, dest_port):
             # Create the destination socket
             dest_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             dest_socket.connect((dest_host, dest_port))
-            print("Connection to Radarview on port 48581 established")
+            print(f"Connected to destination {dest_host}:{dest_port}")
             
-            # Send the user token
-            if USER_TOKEN:
-                dest_socket.sendall(f"TOKEN:{USER_TOKEN}\n".encode('utf-8'))
-                print("User token sent")
-            else:
+            if not USER_TOKEN:
                 print("Error: User token not set")
                 sys.exit(1)
-            
-            connection_established = True
 
             # Forward data
             while True:
@@ -36,20 +29,16 @@ def forward_data(source_host, source_port, dest_host, dest_port):
                 if not data:
                     print("Did not receive more data from source.") 
                     break  # Break the loop if no more data
-                dest_socket.sendall(data)
+                
+                # Prepend the token to each data packet
+                token_data = f"TOKEN:{USER_TOKEN}\n".encode('utf-8') + data
+                dest_socket.sendall(token_data)
+                print("Data sent with token")
 
         except socket.timeout:
-            if not connection_established:
-                print("Cannot connect to RadarView - got timeout")
-                connection_established = True  # Protects from displaying the message again
+            print("Connection timeout")
         except socket.error as e:
-            if e.errno == socket.errno.ECONNREFUSED:
-                print("Cannot connect to RadarView - connection refused")
-            elif e.errno == socket.errno.EPIPE:
-                print("Cannot connect to RadarView - broken pipe")
-            else:
-                print(f"Unexpected error: {e}")
-            connection_established = False  # Allows to retry the connection in the next iteration 
+            print(f"Socket error: {e}")
         finally:
             # Close the sockets
             if 'source_socket' in locals():
@@ -57,6 +46,7 @@ def forward_data(source_host, source_port, dest_host, dest_port):
             if 'dest_socket' in locals():
                 dest_socket.close()
 
+        print("Waiting before reconnecting...")
         time.sleep(3)  # Wait 3 seconds before the next attempt
 
 if __name__ == "__main__":
