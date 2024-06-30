@@ -23,6 +23,9 @@ def forward_data(source_host, source_port, dest_host, dest_port):
                 print("Error: User token not set")
                 sys.exit(1)
 
+            # Prepare the token message
+            token_message = f"TOKEN:{USER_TOKEN}\n".encode('utf-8')
+
             # Forward data
             while True:
                 data = source_socket.recv(1024)
@@ -30,9 +33,17 @@ def forward_data(source_host, source_port, dest_host, dest_port):
                     print("Did not receive more data from source.") 
                     break  # Break the loop if no more data
                 
-                # Prepend the token to each data packet
-                token_data = f"TOKEN:{USER_TOKEN}\n".encode('utf-8') + data
-                dest_socket.sendall(token_data)
+                # Split the data into lines
+                lines = data.split(b'\n')
+                
+                # Process each line
+                for line in lines:
+                    if line:  # Skip empty lines
+                        # Send the token before each line of data
+                        dest_socket.sendall(token_message)
+                        # Send the original line of data
+                        dest_socket.sendall(line + b'\n')
+                
                 print("Data sent with token")
 
         except socket.timeout:
