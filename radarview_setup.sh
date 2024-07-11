@@ -23,24 +23,49 @@ get_user_token() {
 
 radarview_create_config() {
   local user_token="$1"
+  
+  # Pobierz plik radarview.py, jeśli nie istnieje
+  if [ ! -f radarview.py ]; then
+    wget https://raw.githubusercontent.com/abcd567a/radarview/main/radarview.py
+  fi
+  
   cp radarview.py /opt/radarview.py
   if [ $? -ne 0 ]; then
     echo "Failed to copy radarview.py"
     exit 1
   fi
   chmod +x /opt/radarview.py
-  
-  python3 << EOF
+
+  # Sprawdzenie wersji Pythona
+  if command -v python3 &>/dev/null; then
+    python_command="python3"
+    python_version=$(python3 --version 2>&1 | awk '{print $2}')
+    if [[ $(echo $python_version | cut -d. -f2) -ge 6 ]]; then
+      format_string="f'{{}}'"
+    else
+      format_string="'{}'"
+    fi
+  elif command -v python &>/dev/null; then
+    python_command="python"
+    python_version=$(python --version 2>&1 | awk '{print $2}')
+    format_string="'{}'"
+  else
+    echo "Python not found. Please install Python and try again."
+    exit 1
+  fi
+
+  # Uaktualnienie pliku radarview.py
+  $python_command << EOF
 import re
 
 user_token = """$user_token"""
 with open('/opt/radarview.py', 'r') as file:
     content = file.read()
-content = re.sub(r"USER_TOKEN = '.*'", f"USER_TOKEN = '{user_token}'", content)
+content = re.sub(r"USER_TOKEN = '.*'", "USER_TOKEN = $format_string".format(user_token), content)
 with open('/opt/radarview.py', 'w') as file:
     file.write(content)
 EOF
-  
+
   if ! grep -q "USER_TOKEN = '$user_token'" /opt/radarview.py; then
     echo "Failed to update radarview.py with token. Please check the file manually."
     exit 1
@@ -57,7 +82,7 @@ After=network-online.target
 [Service]
 Type=simple
 ExecStartPre=/bin/sleep 60
-ExecStart=/usr/bin/python3 /opt/radarview.py
+ExecStart=/usr/bin/$python_command /opt/radarview.py
 User=root
 Restart=on-failure
 StartLimitBurst=2
@@ -71,7 +96,7 @@ EOF
   systemctl enable radarview
 }
 
-install_dump() { 
+install_dump() {
   wget https://www.flightaware.com/adsb/piaware/files/packages/pool/piaware/f/flightaware-apt-repository/flightaware-apt-repository_1.1_all.deb -O /opt/farepo.deb
   dpkg -i /opt/farepo.deb
   apt update
@@ -86,7 +111,7 @@ clean_up() {
 # Main script
 echo "Welcome to the RadarView setup script!"
 
-if [ "$(whoami)" != "root" ]; then
+if [ "$(id -u)" -ne 0 ]; then
   echo "Please run this script as root (use sudo or sudo su)"
   exit 1
 fi
@@ -100,16 +125,16 @@ else
   echo "Dump1090 / reADSB are not installed. Do you want to install it now? (y/n)"
   read -r key
   case "$key" in
-    y|Y) 
+    y|Y)
       install_dump
       radarview_create_config "$user_token"
       radarview_create_service
       ;;
-    n|N) 
+    n|N)
       echo "User refused installing Dump1090. Exiting now"
       exit 1
       ;;
-    *) 
+    *)
       echo "Invalid input. Exiting now."
       exit 1
       ;;

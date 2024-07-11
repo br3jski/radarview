@@ -25,25 +25,43 @@ radarview_create_config() {
   local user_token="$1"
   echo "Configuring RadarView..."
   # Download radarview.py from GitHub
-  wget -O https://raw.githubusercontent.com/br3jski/radarview/main/radarview.py -O /opt/radarview.py
-  #cp /opt/radarview/radarview.py /opt/radarview.py
+  wget https://raw.githubusercontent.com/br3jski/radarview/main/radarview.py -O /opt/radarview.py
   if [ $? -ne 0 ]; then
-    echo "Failed to copy radarview.py"
+    echo "Failed to download radarview.py"
     exit 1
   fi
   chmod +x /opt/radarview.py
-  
-  python3 << EOF
+
+  # Sprawdzenie wersji Pythona
+  if command -v python3 &>/dev/null; then
+    python_command="python3"
+    python_version=$(python3 --version 2>&1 | awk '{print $2}')
+    if [[ $(echo $python_version | cut -d. -f2) -ge 6 ]]; then
+      format_string="f'{{}}'"
+    else
+      format_string="'{}'"
+    fi
+  elif command -v python &>/dev/null; then
+    python_command="python"
+    python_version=$(python --version 2>&1 | awk '{print $2}')
+    format_string="'{}'"
+  else
+    echo "Python not found. Please install Python and try again."
+    exit 1
+  fi
+
+  # Uaktualnienie pliku radarview.py
+  $python_command << EOF
 import re
 
 user_token = """$user_token"""
 with open('/opt/radarview.py', 'r') as file:
     content = file.read()
-content = re.sub(r"USER_TOKEN = '.*'", f"USER_TOKEN = '{user_token}'", content)
+content = re.sub(r"USER_TOKEN = '.*'", "USER_TOKEN = $format_string".format(user_token), content)
 with open('/opt/radarview.py', 'w') as file:
     file.write(content)
 EOF
-  
+
   if ! grep -q "USER_TOKEN = '$user_token'" /opt/radarview.py; then
     echo "Failed to update radarview.py with token. Please check the file manually."
     exit 1
@@ -62,7 +80,7 @@ After=network-online.target
 [Service]
 Type=simple
 ExecStartPre=/bin/sleep 60
-ExecStart=/usr/bin/python3 /opt/radarview.py
+ExecStart=/usr/bin/$python_command /opt/radarview.py
 User=root
 Restart=on-failure
 StartLimitBurst=2
@@ -96,7 +114,7 @@ clean_up() {
 # Main script
 echo "Welcome to the RadarView setup script!"
 
-if [ "$(whoami)" != "root" ]; then
+if [ "$(id -u)" -ne 0 ]; then
   echo "Please run this script as root (use sudo or sudo su)"
   exit 1
 fi
