@@ -1,4 +1,7 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from __future__ import print_function
 import socket
 import time
 import sys
@@ -12,19 +15,19 @@ def forward_data(source_host, source_port, dest_host, dest_port):
             # Create the source socket
             source_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             source_socket.connect((source_host, source_port))
-            print(f"Connected to source {source_host}:{source_port}")
+            print("Connected to source {0}:{1}".format(source_host, source_port))
 
             # Create the destination socket
             dest_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             dest_socket.connect((dest_host, dest_port))
-            print(f"Connected to destination {dest_host}:{dest_port}")
+            print("Connected to destination {0}:{1}".format(dest_host, dest_port))
             
             if not USER_TOKEN:
                 print("Error: User token not set")
                 sys.exit(1)
 
             # Prepare the token message
-            token_message = f"TOKEN:{USER_TOKEN}\n".encode('utf-8')
+            token_message = "TOKEN:{0}\n".format(USER_TOKEN).encode('utf-8')
 
             # Forward data
             while True:
@@ -49,7 +52,7 @@ def forward_data(source_host, source_port, dest_host, dest_port):
         except socket.timeout:
             print("Connection timeout")
         except socket.error as e:
-            print(f"Socket error: {e}")
+            print("Socket error: {0}".format(e))
         finally:
             # Close the sockets
             if 'source_socket' in locals():
