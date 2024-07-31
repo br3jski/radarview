@@ -39,17 +39,14 @@ radarview_create_config() {
   # Sprawdzenie wersji Pythona
   if command -v python3 &>/dev/null; then
     python_command="python3"
-    python_version=$(python3 --version 2>&1 | awk '{print $2}')
   elif command -v python &>/dev/null; then
     python_command="python"
-    python_version=$(python --version 2>&1 | awk '{print $2}')
   else
     echo "Python not found. Please install Python and try again."
     exit 1
   fi
 
-  echo "Python command: $python_command"
-  echo "Python version: $python_version"
+  echo "Updating radarview.py with user token..."
 
   # Uaktualnienie pliku radarview.py
   $python_command << EOF
@@ -58,20 +55,15 @@ import re
 user_token = """$user_token"""
 with open('/opt/radarview.py', 'r') as file:
     content = file.read()
-print("Original content:")
-print(content)
 new_token_line = f"USER_TOKEN = '{user_token}'"
 content = re.sub(r"USER_TOKEN = .*", new_token_line, content)
-print("Updated content:")
-print(content)
 with open('/opt/radarview.py', 'w') as file:
     file.write(content)
 EOF
 
-  echo "Final content of /opt/radarview.py:"
-  cat /opt/radarview.py
-
-  if ! grep -q "USER_TOKEN = '$user_token'" /opt/radarview.py; then
+  if grep -q "USER_TOKEN = '$user_token'" /opt/radarview.py; then
+    echo "Successfully updated radarview.py with user token."
+  else
     echo "Failed to update radarview.py with token. Please check the file manually."
     exit 1
   fi
