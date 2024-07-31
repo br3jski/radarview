@@ -26,7 +26,7 @@ radarview_create_config() {
   
   # Pobierz plik radarview.py, jeśli nie istnieje
   if [ ! -f radarview.py ]; then
-    wget https://raw.githubusercontent.com/abcd567a/radarview/main/radarview.py
+    wget https://raw.githubusercontent.com/br3jski/radarview/main/radarview.py
   fi
   
   cp radarview.py /opt/radarview.py
