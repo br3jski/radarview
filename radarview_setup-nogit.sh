@@ -27,7 +27,7 @@ radarview_create_config() {
   # Download radarview.py from GitHub
   wget https://raw.githubusercontent.com/br3jski/radarview/main/radarview.py -O /opt/radarview.py
   if [ $? -ne 0 ]; then
-    echo "Failed to download radarview.py"
+    echo "Failed to copy radarview.py"
     exit 1
   fi
   chmod +x /opt/radarview.py
@@ -35,32 +35,38 @@ radarview_create_config() {
   # Sprawdzenie wersji Pythona
   if command -v python3 &>/dev/null; then
     python_command="python3"
-    python_version=$(python3 --version 2>&1 | awk '{print $2}')
-    if [[ $(echo $python_version | cut -d. -f2) -ge 6 ]]; then
-      format_string="f'{{}}'"
-    else
-      format_string="'{}'"
-    fi
   elif command -v python &>/dev/null; then
     python_command="python"
-    python_version=$(python --version 2>&1 | awk '{print $2}')
-    format_string="'{}'"
   else
     echo "Python not found. Please install Python and try again."
     exit 1
   fi
 
-  # Uaktualnienie pliku radarview.py
-  $python_command << EOF
+  # Uaktualnienie pliku radarview.py - using simpler approach for Python 2 compatibility
+  # Create a temporary Python script to avoid shell injection issues
+  cat > /tmp/update_token.py << 'PYTHON_SCRIPT'
 import re
+import sys
 
-user_token = """$user_token"""
+if len(sys.argv) != 2:
+    print("Usage: update_token.py <token>")
+    sys.exit(1)
+
+user_token = sys.argv[1]
+
 with open('/opt/radarview.py', 'r') as file:
     content = file.read()
-content = re.sub(r"USER_TOKEN = '.*'", "USER_TOKEN = $format_string".format(user_token), content)
+
+# Replace the USER_TOKEN line - this works with both Python 2 and 3
+content = re.sub(r"USER_TOKEN = '.*'", "USER_TOKEN = '" + user_token + "'", content)
+
 with open('/opt/radarview.py', 'w') as file:
     file.write(content)
-EOF
+PYTHON_SCRIPT
+
+  # Run the Python script with the token as an argument
+  $python_command /tmp/update_token.py "$user_token"
+  rm /tmp/update_token.py
 
   if ! grep -q "USER_TOKEN = '$user_token'" /opt/radarview.py; then
     echo "Failed to update radarview.py with token. Please check the file manually."
@@ -134,8 +140,9 @@ else
       radarview_create_service
       ;;
     n|N) 
-      echo "User refused installing Dump1090. Exiting now"
-      exit 1
+      echo "Skipping Dump1090 installation. Setting up RadarView only..."
+      radarview_create_config "$user_token"
+      radarview_create_service
       ;;
     *) 
       echo "Invalid input. Exiting now."
