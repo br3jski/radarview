@@ -21,6 +21,28 @@ get_user_token() {
   done
 }
 
+find_adsb_decoder() {
+  local candidate
+  local path
+
+  for candidate in dump1090-fa dump1090-mutability dump1090 readsb; do
+    path=$(command -v "$candidate" 2>/dev/null)
+    if [ -n "$path" ] && [ -x "$path" ]; then
+      echo "$path"
+      return 0
+    fi
+  done
+
+  for path in /usr/bin/dump1090-fa /usr/bin/dump1090-mutability /usr/bin/dump1090 /usr/bin/readsb /usr/local/bin/readsb; do
+    if [ -x "$path" ]; then
+      echo "$path"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 radarview_create_config() {
   local user_token="$1"
   echo "Configuring RadarView..."
@@ -33,10 +55,10 @@ radarview_create_config() {
   chmod +x /opt/radarview.py
 
   # Sprawdzenie wersji Pythona
-  if command -v python3 &>/dev/null; then
-    python_command="python3"
-  elif command -v python &>/dev/null; then
-    python_command="python"
+  if python_command=$(command -v python3 2>/dev/null); then
+    :
+  elif python_command=$(command -v python 2>/dev/null); then
+    :
   else
     echo "Python not found. Please install Python and try again."
     exit 1
@@ -65,7 +87,7 @@ with open('/opt/radarview.py', 'w') as file:
 PYTHON_SCRIPT
 
   # Run the Python script with the token as an argument
-  $python_command /tmp/update_token.py "$user_token"
+  "$python_command" /tmp/update_token.py "$user_token"
   rm /tmp/update_token.py
 
   if ! grep -q "USER_TOKEN = '$user_token'" /opt/radarview.py; then
@@ -86,7 +108,7 @@ After=network-online.target
 [Service]
 Type=simple
 ExecStartPre=/bin/sleep 60
-ExecStart=/usr/bin/$python_command /opt/radarview.py
+ExecStart=$python_command /opt/radarview.py
 User=root
 Restart=on-failure
 StartLimitBurst=2
@@ -127,11 +149,13 @@ fi
 
 user_token=$(get_user_token)
 
-if [ -x /usr/bin/dump1090-fa ] || [ -x /usr/bin/dump1090-mutability ] || [ -x /usr/bin/dump1090 ] || [ -x /usr/bin/readsb ]; then
+adsb_decoder=$(find_adsb_decoder)
+if [ -n "$adsb_decoder" ]; then
+  echo "Found ADS-B decoder: $adsb_decoder"
   radarview_create_config "$user_token"
   radarview_create_service
 else
-  echo "Dump1090 / reADSB are not installed. Do you want to install it now? (y/n)"
+  echo "Dump1090 / readsb are not installed. Do you want to install it now? (y/n)"
   read -r key
   case "$key" in
     y|Y) 
