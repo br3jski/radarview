@@ -8,9 +8,9 @@ import (
 )
 
 func TestCanonicalProofFieldOrder(t *testing.T) {
-	hello := Hello{Operation: "authenticate", InstallationID: "12345678-1234-4678-9abc-123456789def", KeyFingerprint: "fingerprint", InputFormat: "sbs", ClientVersion: "2.0.0"}
+	hello := Hello{Operation: "authenticate", InstallationID: "12345678-1234-4678-9abc-123456789def", KeyFingerprint: "fingerprint", InputFormat: "sbs", ClientVersion: "2.1.0"}
 	challenge := Challenge{ChallengeID: "challenge", Nonce: "nonce", ServerName: "feed.ads-b.pro", IssuedAt: "2026-07-18T00:00:00.000Z", ExpiresAt: "2026-07-18T00:00:30.000Z"}
-	expected := "ADSBPRO-FEEDER-V2\noperation=authenticate\nchallengeId=challenge\nnonce=nonce\ninstallationId=12345678-1234-4678-9abc-123456789def\nkeyFingerprint=fingerprint\ninputFormat=sbs\nclientVersion=2.0.0\nserverName=feed.ads-b.pro\nissuedAt=2026-07-18T00:00:00.000Z\nexpiresAt=2026-07-18T00:00:30.000Z"
+	expected := "ADSBPRO-FEEDER-V2\noperation=authenticate\nchallengeId=challenge\nnonce=nonce\ninstallationId=12345678-1234-4678-9abc-123456789def\nkeyFingerprint=fingerprint\ninputFormat=sbs\nclientVersion=2.1.0\nserverName=feed.ads-b.pro\nissuedAt=2026-07-18T00:00:00.000Z\nexpiresAt=2026-07-18T00:00:30.000Z"
 	if string(CanonicalProof(hello, challenge)) != expected {
 		t.Fatalf("canonical payload changed")
 	}

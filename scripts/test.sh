@@ -40,14 +40,14 @@ openssl dgst -sha256 \
 
 RELEASE_TEST_DIR=$(mktemp -d)
 trap 'rm -rf "$RELEASE_TEST_DIR"' EXIT
-VERSION=2.0.0-test OUTPUT_DIR="$RELEASE_TEST_DIR" ./scripts/build-release.sh
+VERSION=2.1.0-test OUTPUT_DIR="$RELEASE_TEST_DIR" ./scripts/build-release.sh
 (
   cd "$RELEASE_TEST_DIR"
-  sha256sum -c SHA256SUMS-2.0.0-test
+  sha256sum -c SHA256SUMS-2.1.0-test
 )
 
 for platform in linux-amd64 linux-arm64 linux-armv6 linux-armv7; do
-  archive="$RELEASE_TEST_DIR/adsbpro-feeder-2.0.0-test-${platform}.tar.gz"
+  archive="$RELEASE_TEST_DIR/adsbpro-feeder-2.1.0-test-${platform}.tar.gz"
   for required_path in \
     ./adsbpro-feeder \
     ./install-v2.sh \
@@ -58,7 +58,7 @@ for platform in linux-amd64 linux-arm64 linux-armv6 linux-armv7; do
 done
 
 for platform in windows-amd64 windows-arm64; do
-  archive="$RELEASE_TEST_DIR/adsbpro-feeder-2.0.0-test-${platform}.zip"
+  archive="$RELEASE_TEST_DIR/adsbpro-feeder-2.1.0-test-${platform}.zip"
   for required_path in \
     adsbpro-feeder.exe \
     install-windows.ps1 \
