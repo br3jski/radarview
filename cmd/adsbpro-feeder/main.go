@@ -23,7 +23,7 @@ import (
 	"github.com/br3jski/radarview/internal/source"
 )
 
-var version = "2.2.2"
+var version = "2.2.3"
 
 type config struct {
 	ServerAddress string

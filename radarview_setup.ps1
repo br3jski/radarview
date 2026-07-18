@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "2.2.2",
+    [string]$Version = "2.2.3",
     [string]$TokenFile = "",
     [string]$SourceHost = "127.0.0.1",
     [ValidateSet("auto", "beast", "sbs")]

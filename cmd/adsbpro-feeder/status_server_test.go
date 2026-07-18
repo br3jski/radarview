@@ -63,11 +63,24 @@ func TestStatusAPIAndPage(t *testing.T) {
 	if !strings.Contains(string(body), "UPDATE AVAILABLE") || !strings.Contains(string(body), "FEEDER STATUS") {
 		t.Fatalf("status page is missing required content")
 	}
-	if strings.Contains(string(body), "No feeder token is stored") || strings.Contains(string(body), "frames forwarded") {
+	if strings.Contains(string(body), "No feeder token is stored") || strings.Contains(string(body), "frames forwarded") || strings.Contains(string(body), "ADS-B payload") {
 		t.Fatalf("status page contains removed cumulative text")
+	}
+	if !strings.Contains(string(body), `id="upload-unit"`) {
+		t.Fatalf("status page does not separate the upload rate unit")
 	}
 	if !strings.Contains(page.Header.Get("Content-Security-Policy"), "default-src 'self'") {
 		t.Fatalf("status page is missing CSP")
+	}
+
+	style, err := http.Get(server.URL + "/style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer style.Body.Close()
+	stylesheet, _ := io.ReadAll(style.Body)
+	if !strings.Contains(string(stylesheet), ".metric{height:190px") || !strings.Contains(string(stylesheet), ".metric{height:145px") || !strings.Contains(string(stylesheet), "white-space:nowrap") {
+		t.Fatalf("status cards do not have fixed, single-line layout rules")
 	}
 }
 
