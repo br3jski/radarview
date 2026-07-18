@@ -12,8 +12,7 @@
     <header class="header">
       <img class="logo" src="/logo.png" alt="ADS-B.Pro">
       <div class="heading">
-        <p class="eyebrow">LOCAL FEEDER STATUS</p>
-        <h1 id="label">ADS-B feeder</h1>
+        <h1>FEEDER STATUS</h1>
         <div class="connection"><span id="state-dot" class="dot"></span><span id="state">LOADING</span></div>
       </div>
       <button id="update-button" class="update hidden" type="button">UPDATE AVAILABLE</button>
@@ -21,9 +20,9 @@
 
     <section class="hero-grid" aria-label="Main feeder status">
       <article class="metric primary"><span>Aircraft</span><strong id="aircraft">—</strong><small id="aircraft-note">Not reported by local decoder</small></article>
-      <article class="metric"><span>Messages / second</span><strong id="rate">—</strong><small id="frames">0 frames forwarded</small></article>
+      <article class="metric"><span>Messages / second</span><strong id="rate">—</strong><small>10-second average</small></article>
       <article class="metric"><span>Last ADS-B frame</span><strong id="last-frame">—</strong><small id="source">Waiting for source</small></article>
-      <article class="metric"><span>Forwarded</span><strong id="bytes">0 B</strong><small id="reconnects">0 reconnects</small></article>
+      <article class="metric"><span>Upload rate</span><strong id="upload-rate">0 B/s</strong><small>ADS-B payload · 10-second average</small></article>
     </section>
 
     <section class="details">
@@ -34,7 +33,6 @@
     </section>
 
     <p id="error" class="error hidden"></p>
-    <footer>Local status only · No feeder token is stored or displayed</footer>
   </main>
 
   <dialog id="update-dialog">

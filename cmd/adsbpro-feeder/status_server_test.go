@@ -50,7 +50,7 @@ func TestStatusAPIAndPage(t *testing.T) {
 	if value.State != "active" || value.AccountDisplay != "t***t@e***.com" || value.Source.Aircraft == nil || *value.Source.Aircraft != 12 {
 		t.Fatalf("unexpected snapshot: %#v", value)
 	}
-	if value.Traffic.Frames != 2 || value.Traffic.Bytes != 12 || !value.Update.Available {
+	if value.Traffic.Frames != 2 || value.Traffic.Bytes != 12 || value.Traffic.PayloadBytesPerSecond != 1.2 || !value.Update.Available {
 		t.Fatalf("unexpected counters or update: %#v", value)
 	}
 
@@ -60,8 +60,11 @@ func TestStatusAPIAndPage(t *testing.T) {
 	}
 	defer page.Body.Close()
 	body, _ := io.ReadAll(page.Body)
-	if !strings.Contains(string(body), "UPDATE AVAILABLE") || !strings.Contains(string(body), "No feeder token is stored") {
+	if !strings.Contains(string(body), "UPDATE AVAILABLE") || !strings.Contains(string(body), "FEEDER STATUS") {
 		t.Fatalf("status page is missing required content")
+	}
+	if strings.Contains(string(body), "No feeder token is stored") || strings.Contains(string(body), "frames forwarded") {
+		t.Fatalf("status page contains removed cumulative text")
 	}
 	if !strings.Contains(page.Header.Get("Content-Security-Policy"), "default-src 'self'") {
 		t.Fatalf("status page is missing CSP")

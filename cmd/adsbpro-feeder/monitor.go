@@ -27,6 +27,7 @@ func (writer *monitoredWriter) Write(buffer []byte) (int, error) {
 type rateBucket struct {
 	second int64
 	frames uint64
+	bytes  uint64
 }
 
 type runtimeMonitor struct {
@@ -67,10 +68,11 @@ type sourceSnapshot struct {
 }
 
 type trafficSnapshot struct {
-	Frames            uint64  `json:"frames"`
-	Bytes             uint64  `json:"bytes"`
-	MessagesPerSecond float64 `json:"messagesPerSecond"`
-	Reconnects        uint64  `json:"reconnects"`
+	Frames                uint64  `json:"frames"`
+	Bytes                 uint64  `json:"bytes"`
+	MessagesPerSecond     float64 `json:"messagesPerSecond"`
+	PayloadBytesPerSecond float64 `json:"payloadBytesPerSecond"`
+	Reconnects            uint64  `json:"reconnects"`
 }
 
 type updateSnapshot struct {
@@ -147,15 +149,17 @@ func (monitor *runtimeMonitor) recordPayload(payload []byte, format string) {
 	monitor.mu.Lock()
 	monitor.bytesForwarded += uint64(len(payload))
 	frames := monitor.countFrames(payload, format)
+	second := now.Unix()
+	bucket := &monitor.rateBuckets[second%int64(len(monitor.rateBuckets))]
+	if bucket.second != second {
+		bucket.second = second
+		bucket.frames = 0
+		bucket.bytes = 0
+	}
+	bucket.bytes += uint64(len(payload))
 	if frames > 0 {
 		monitor.framesForwarded += frames
 		monitor.lastFrameAt = now
-		second := now.Unix()
-		bucket := &monitor.rateBuckets[second%int64(len(monitor.rateBuckets))]
-		if bucket.second != second {
-			bucket.second = second
-			bucket.frames = 0
-		}
 		bucket.frames += frames
 	}
 	monitor.mu.Unlock()
@@ -207,10 +211,12 @@ func (monitor *runtimeMonitor) snapshot() apiStatus {
 	monitor.mu.Lock()
 	defer monitor.mu.Unlock()
 	now := time.Now()
-	var recent uint64
+	var recentFrames uint64
+	var recentBytes uint64
 	for _, bucket := range monitor.rateBuckets {
 		if now.Unix()-bucket.second >= 0 && now.Unix()-bucket.second < int64(len(monitor.rateBuckets)) {
-			recent += bucket.frames
+			recentFrames += bucket.frames
+			recentBytes += bucket.bytes
 		}
 	}
 	port := monitor.sourceConfig.BeastPort
@@ -227,7 +233,9 @@ func (monitor *runtimeMonitor) snapshot() apiStatus {
 		},
 		Traffic: trafficSnapshot{
 			Frames: monitor.framesForwarded, Bytes: monitor.bytesForwarded,
-			MessagesPerSecond: float64(recent) / float64(len(monitor.rateBuckets)), Reconnects: monitor.reconnects,
+			MessagesPerSecond:     float64(recentFrames) / float64(len(monitor.rateBuckets)),
+			PayloadBytesPerSecond: float64(recentBytes) / float64(len(monitor.rateBuckets)),
+			Reconnects:            monitor.reconnects,
 		},
 		Update: updateSnapshot{
 			Available: newerVersion(monitor.latestVersion, version), Latest: monitor.latestVersion,

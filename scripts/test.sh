@@ -27,7 +27,7 @@ bash -n \
 
 go test ./...
 
-CURRENT_VERSION=2.2.1
+CURRENT_VERSION=2.2.2
 CURRENT_RELEASE_DIR="$REPOSITORY_DIR/releases/v${CURRENT_VERSION}"
 openssl dgst -sha256 \
   -verify packaging/release-signing-public.pem \
@@ -40,14 +40,14 @@ openssl dgst -sha256 \
 
 RELEASE_TEST_DIR=$(mktemp -d)
 trap 'rm -rf "$RELEASE_TEST_DIR"' EXIT
-VERSION=2.2.1-test OUTPUT_DIR="$RELEASE_TEST_DIR" ./scripts/build-release.sh
+VERSION=2.2.2-test OUTPUT_DIR="$RELEASE_TEST_DIR" ./scripts/build-release.sh
 (
   cd "$RELEASE_TEST_DIR"
-  sha256sum -c SHA256SUMS-2.2.1-test
+  sha256sum -c SHA256SUMS-2.2.2-test
 )
 
 for platform in linux-amd64 linux-arm64 linux-armv6 linux-armv7; do
-  archive="$RELEASE_TEST_DIR/adsbpro-feeder-2.2.1-test-${platform}.tar.gz"
+  archive="$RELEASE_TEST_DIR/adsbpro-feeder-2.2.2-test-${platform}.tar.gz"
   archive_listing=$(tar -tzf "$archive")
   for required_path in \
     ./adsbpro-feeder \
@@ -59,7 +59,7 @@ for platform in linux-amd64 linux-arm64 linux-armv6 linux-armv7; do
 done
 
 for platform in windows-amd64 windows-arm64; do
-  archive="$RELEASE_TEST_DIR/adsbpro-feeder-2.2.1-test-${platform}.zip"
+  archive="$RELEASE_TEST_DIR/adsbpro-feeder-2.2.2-test-${platform}.zip"
   archive_listing=$(unzip -Z1 "$archive")
   for required_path in \
     adsbpro-feeder.exe \
