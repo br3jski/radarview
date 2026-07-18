@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -20,3 +20,14 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y shellcheck
       - name: Test client and release packages
         run: ./scripts/test.sh
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Test and build Windows client
+        shell: pwsh
+        run: ./scripts/test-windows.ps1

@@ -24,7 +24,7 @@ import (
 	"github.com/br3jski/radarview/internal/source"
 )
 
-var version = "2.0.0"
+var version = "2.1.0"
 
 type config struct {
 	ServerAddress string
@@ -45,9 +45,11 @@ type status struct {
 
 func main() {
 	configuration := loadConfig()
+	command := "run"
 	if len(os.Args) > 1 {
-		switch os.Args[1] {
-		case "run":
+		command = os.Args[1]
+		switch command {
+		case "run", "service":
 		case "status":
 			value, err := os.ReadFile(filepath.Join(configuration.DataDir, "status.json"))
 			if err != nil {
@@ -59,21 +61,53 @@ func main() {
 			fmt.Println(version)
 			return
 		default:
-			log.Fatalf("usage: %s [run|status|version]", filepath.Base(os.Args[0]))
+			log.Fatalf("usage: %s [run|service|status|version]", filepath.Base(os.Args[0]))
+		}
+	}
+	if command == "service" {
+		if err := configureServiceLogging(configuration.DataDir); err != nil {
+			log.Fatal(err)
 		}
 	}
 	identityValue, err := identity.LoadOrCreate(configuration.DataDir)
 	if err != nil {
 		log.Fatal(err)
 	}
+	run := func(ctx context.Context) error {
+		return runLoop(ctx, configuration, identityValue)
+	}
+	if command == "service" {
+		if err := runPlatformService(run); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	if err := run(context.Background()); err != nil && !errors.Is(err, context.Canceled) {
+		log.Fatal(err)
+	}
+}
+
+func runLoop(ctx context.Context, configuration config, identityValue *identity.Identity) error {
 	delay := time.Second
 	for {
-		if err := runSession(configuration, identityValue, func() { delay = time.Second }); err != nil {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := runSession(ctx, configuration, identityValue, func() { delay = time.Second }); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return err
+			}
 			writeStatus(configuration.DataDir, status{State: "disconnected", InstallationID: identityValue.InstallationID, UpdatedAt: time.Now(), Error: err.Error()})
 			log.Printf("session ended: %v", err)
 		}
 		jitter := time.Duration(rand.Int63n(int64(delay)))
-		time.Sleep(jitter)
+		timer := time.NewTimer(jitter)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
 		if delay < 60*time.Second {
 			delay *= 2
 			if delay > 60*time.Second {
@@ -83,7 +117,7 @@ func main() {
 	}
 }
 
-func runSession(configuration config, identityValue *identity.Identity, onActive func()) error {
+func runSession(parent context.Context, configuration config, identityValue *identity.Identity, onActive func()) error {
 	sourceConnection, err := source.Connect(configuration.Source)
 	if err != nil {
 		return fmt.Errorf("ADS-B source: %w", err)
@@ -172,7 +206,7 @@ func runSession(configuration config, identityValue *identity.Identity, onActive
 	}
 	writeStatus(configuration.DataDir, status{State: "ready", InstallationID: identityValue.InstallationID, InputFormat: sourceConnection.Format, UpdatedAt: time.Now()})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 	var closeOnce sync.Once
 	closeConnection := func() { closeOnce.Do(func() { cancel(); _ = tlsConnection.Close() }) }
@@ -232,7 +266,7 @@ func runSession(configuration config, identityValue *identity.Identity, onActive
 
 func loadConfig() config {
 	values := map[string]string{}
-	path := env("ADSBPRO_CONFIG", "/etc/adsbpro-feeder/config.env")
+	path := env("ADSBPRO_CONFIG", defaultConfigPath())
 	if data, err := os.ReadFile(path); err == nil {
 		for _, line := range strings.Split(string(data), "\n") {
 			line = strings.TrimSpace(line)
@@ -261,7 +295,7 @@ func loadConfig() config {
 		}
 		return value
 	}
-	dataDir := get("DATA_DIR", "/var/lib/adsbpro-feeder")
+	dataDir := get("DATA_DIR", defaultDataDir())
 	return config{
 		ServerAddress: get("SERVER_ADDR", "feed.ads-b.pro:48582"), ServerName: get("SERVER_NAME", "feed.ads-b.pro"),
 		Source:  source.Config{Host: get("SOURCE_HOST", "127.0.0.1"), Mode: get("SOURCE_MODE", "auto"), BeastPort: port("BEAST_PORT", 30005), SBSPort: port("SBS_PORT", 30003)},

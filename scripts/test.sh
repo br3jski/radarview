@@ -46,6 +46,16 @@ for platform in linux-amd64 linux-arm64 linux-armv6 linux-armv7; do
   done
 done
 
+for platform in windows-amd64 windows-arm64; do
+  archive="$RELEASE_TEST_DIR/adsbpro-feeder-2.0.0-test-${platform}.zip"
+  for required_path in \
+    adsbpro-feeder.exe \
+    install-windows.ps1 \
+    rollback-windows.ps1; do
+    unzip -Z1 "$archive" | grep -Fxq "$required_path"
+  done
+done
+
 if command -v docker >/dev/null 2>&1; then
   ./scripts/test-installer.sh
 fi

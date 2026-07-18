@@ -8,7 +8,7 @@ ADS-B.Pro feeder v2 installer
 Usage: radarview_setup.sh [options]
 
 Bootstrap options:
-  --version VERSION     Install a specific release (default: 2.0.0).
+  --version VERSION     Install a specific release (default: 2.1.0).
   -h, --help            Show this help.
 
 Feeder options passed to the verified installer:
@@ -30,7 +30,7 @@ fail() {
   exit 1
 }
 
-VERSION="${ADSBPRO_VERSION:-2.0.0}"
+VERSION="${ADSBPRO_VERSION:-2.1.0}"
 INSTALLER_ARGS=()
 while [ "$#" -gt 0 ]; do
   case "$1" in

@@ -2,7 +2,7 @@
 
 This installer connects your ADS-B receiver to ADS-B.Pro.
 
-You need:
+For Linux you need:
 
 - a Linux receiver with readsb or dump1090 already working;
 - Beast data on port `30005` or SBS data on port `30003`;
@@ -32,6 +32,27 @@ sudo /usr/local/bin/adsbpro-feeder status
 ```
 
 The result should contain `"state":"active"`.
+
+## Windows installation
+
+Open **Windows PowerShell as Administrator** and run:
+
+```powershell
+irm https://raw.githubusercontent.com/br3jski/radarview/main/radarview_setup.ps1 | iex
+```
+
+Paste your feeder token when asked. The installer supports 64-bit Intel/AMD and
+ARM64 Windows. It automatically uses Beast data from `127.0.0.1:30005`, or SBS
+from `127.0.0.1:30003` when Beast data is unavailable.
+
+The installation is complete only when you see `Feeder v2 is ACTIVE.`. The
+feeder then runs automatically as the `ADSBProFeeder` Windows service.
+
+Check its status with:
+
+```powershell
+& "$env:ProgramFiles\ADSBPro\Feeder\adsbpro-feeder.exe" status
+```
 
 ## Migrating an old RadarView feeder
 
