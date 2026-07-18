@@ -1,4 +1,21 @@
-# RawFlight revies as RadarView. 
+# ADS-B.Pro feeder
+
+`radarview.py` remains the supported legacy client for port 48581. The new
+`adsbpro-feeder` Go client pairs once over TLS on port 48582 and then sends only
+raw Beast or SBS data. It does not append an account token to aircraft frames.
+
+Build and test v2 locally:
+
+```bash
+go test ./...
+go build ./cmd/adsbpro-feeder
+```
+
+The migration installer does not stop `radarview.service` until the server has
+acknowledged the first valid v2 frame. Legacy files remain available for rollback.
+Run `sudo ./rollback-v2.sh` to stop v2 and re-enable the preserved legacy unit.
+
+## Legacy client
 
 # About RadarView and what the heck happened to RawFlight?!
 

@@ -1,0 +1,27 @@
+[Unit]
+Description=ADS-B.Pro feeder v2
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=adsbpro-feeder
+Group=adsbpro-feeder
+ExecStart=/usr/local/bin/adsbpro-feeder run
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ReadWritePaths=/var/lib/adsbpro-feeder
+ReadOnlyPaths=/etc/adsbpro-feeder
+
+[Install]
+WantedBy=multi-user.target
