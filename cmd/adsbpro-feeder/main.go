@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -24,7 +23,7 @@ import (
 	"github.com/br3jski/radarview/internal/source"
 )
 
-var version = "2.1.0"
+var version = "2.2.0"
 
 type config struct {
 	ServerAddress string
@@ -33,6 +32,9 @@ type config struct {
 	DataDir       string
 	TokenFile     string
 	Label         string
+	StatusListen  string
+	AircraftJSON  string
+	UpdateURL     string
 }
 
 type status struct {
@@ -41,6 +43,7 @@ type status struct {
 	InputFormat    string    `json:"inputFormat,omitempty"`
 	UpdatedAt      time.Time `json:"updatedAt"`
 	Error          string    `json:"error,omitempty"`
+	AccountDisplay string    `json:"accountDisplay,omitempty"`
 }
 
 func main() {
@@ -73,8 +76,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	monitor := newRuntimeMonitor(configuration, identityValue.InstallationID)
 	run := func(ctx context.Context) error {
-		return runLoop(ctx, configuration, identityValue)
+		go serveStatus(ctx, configuration.StatusListen, monitor)
+		go monitorUpdates(ctx, configuration.UpdateURL, monitor)
+		go monitorAircraft(ctx, configuration.AircraftJSON, monitor)
+		return runLoop(ctx, configuration, identityValue, monitor)
 	}
 	if command == "service" {
 		if err := runPlatformService(run); err != nil {
@@ -87,17 +94,18 @@ func main() {
 	}
 }
 
-func runLoop(ctx context.Context, configuration config, identityValue *identity.Identity) error {
+func runLoop(ctx context.Context, configuration config, identityValue *identity.Identity, monitor *runtimeMonitor) error {
 	delay := time.Second
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := runSession(ctx, configuration, identityValue, func() { delay = time.Second }); err != nil {
+		monitor.setState("connecting", "", "", "")
+		if err := runSession(ctx, configuration, identityValue, monitor, func() { delay = time.Second }); err != nil {
 			if errors.Is(err, context.Canceled) {
 				return err
 			}
-			writeStatus(configuration.DataDir, status{State: "disconnected", InstallationID: identityValue.InstallationID, UpdatedAt: time.Now(), Error: err.Error()})
+			monitor.setState("disconnected", "", err.Error(), "")
 			log.Printf("session ended: %v", err)
 		}
 		jitter := time.Duration(rand.Int63n(int64(delay)))
@@ -117,7 +125,7 @@ func runLoop(ctx context.Context, configuration config, identityValue *identity.
 	}
 }
 
-func runSession(parent context.Context, configuration config, identityValue *identity.Identity, onActive func()) error {
+func runSession(parent context.Context, configuration config, identityValue *identity.Identity, monitor *runtimeMonitor, onActive func()) error {
 	sourceConnection, err := source.Connect(configuration.Source)
 	if err != nil {
 		return fmt.Errorf("ADS-B source: %w", err)
@@ -204,7 +212,7 @@ func runSession(parent context.Context, configuration config, identityValue *ide
 			return err
 		}
 	}
-	writeStatus(configuration.DataDir, status{State: "ready", InstallationID: identityValue.InstallationID, InputFormat: sourceConnection.Format, UpdatedAt: time.Now()})
+	monitor.setState("ready", sourceConnection.Format, "", ready.AccountDisplay)
 
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
@@ -233,17 +241,21 @@ func runSession(parent context.Context, configuration config, identityValue *ide
 				serverResult <- err
 				return
 			}
-			writeStatus(configuration.DataDir, status{State: "active", InstallationID: identityValue.InstallationID, InputFormat: sourceConnection.Format, UpdatedAt: time.Now()})
+			monitor.setState("active", sourceConnection.Format, "", message.AccountDisplay)
 			activeSignal <- struct{}{}
 		}
 	}()
+	monitoredConnection := &monitoredWriter{Writer: tlsConnection, monitor: monitor, format: sourceConnection.Format}
 	if len(sourceConnection.Prefetched) > 0 {
-		if _, err := tlsConnection.Write(sourceConnection.Prefetched); err != nil {
+		if _, err := monitoredConnection.Write(sourceConnection.Prefetched); err != nil {
 			return err
 		}
 	}
 	copyResult := make(chan error, 1)
-	go func() { _, err := io.Copy(tlsConnection, sourceConnection); copyResult <- err }()
+	go func() {
+		_, err := io.Copy(monitoredConnection, sourceConnection)
+		copyResult <- err
+	}()
 	for {
 		select {
 		case err := <-serverResult:
@@ -300,6 +312,8 @@ func loadConfig() config {
 		ServerAddress: get("SERVER_ADDR", "feed.ads-b.pro:48582"), ServerName: get("SERVER_NAME", "feed.ads-b.pro"),
 		Source:  source.Config{Host: get("SOURCE_HOST", "127.0.0.1"), Mode: get("SOURCE_MODE", "auto"), BeastPort: port("BEAST_PORT", 30005), SBSPort: port("SBS_PORT", 30003)},
 		DataDir: dataDir, TokenFile: get("TOKEN_FILE", filepath.Join(dataDir, "pairing-token")), Label: get("FEEDER_LABEL", "ADS-B feeder"),
+		StatusListen: get("STATUS_LISTEN", "127.0.0.1:54321"), AircraftJSON: get("AIRCRAFT_JSON", ""),
+		UpdateURL: get("UPDATE_URL", "https://raw.githubusercontent.com/br3jski/radarview/main/latest.json"),
 	}
 }
 
@@ -308,11 +322,4 @@ func env(key, fallback string) string {
 		return value
 	}
 	return fallback
-}
-func writeStatus(dataDir string, value status) {
-	body, _ := json.Marshal(value)
-	temporary := filepath.Join(dataDir, "status.json.new")
-	if os.WriteFile(temporary, body, 0600) == nil {
-		_ = os.Rename(temporary, filepath.Join(dataDir, "status.json"))
-	}
 }

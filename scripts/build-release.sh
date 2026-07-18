@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${VERSION:-2.1.0}"
+VERSION="${VERSION:-2.2.0}"
 OUTPUT_DIR="${OUTPUT_DIR:-dist}"
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 REPOSITORY_DIR=$(CDPATH='' cd -- "$SCRIPT_DIR/.." && pwd)
@@ -38,6 +38,7 @@ build() {
   install -m 0755 "$REPOSITORY_DIR/rollback-v2.sh" "$package_dir/rollback-v2.sh"
   install -m 0644 "$REPOSITORY_DIR/packaging/adsbpro-feeder.service" "$package_dir/packaging/adsbpro-feeder.service"
   COPYFILE_DISABLE=1 tar --no-xattrs -C "$package_dir" -czf "$archive" .
+  rm -f "$binary"
 }
 
 build_windows() {
@@ -58,6 +59,7 @@ build_windows() {
     cd "$package_dir"
     zip -q -X "$archive" adsbpro-feeder.exe install-windows.ps1 rollback-windows.ps1
   )
+  rm -f "$binary"
 }
 
 cd "$REPOSITORY_DIR"

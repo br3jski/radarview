@@ -13,8 +13,8 @@ foreach ($script in @("radarview_setup.ps1", "install-windows.ps1", "rollback-wi
 }
 
 . ./radarview_setup.ps1 -FunctionsOnly
-$manifest = Resolve-Path "releases/v2.1.0/SHA256SUMS-2.1.0"
-$signature = Resolve-Path "releases/v2.1.0/SHA256SUMS-2.1.0.sig"
+$manifest = Resolve-Path "releases/v2.2.0/SHA256SUMS-2.2.0"
+$signature = Resolve-Path "releases/v2.2.0/SHA256SUMS-2.2.0.sig"
 if (-not (Test-ReleaseSignature -ManifestPath $manifest -SignaturePath $signature)) {
     throw "Windows release signature verification failed."
 }
@@ -36,7 +36,7 @@ $binary = Join-Path $env:RUNNER_TEMP "adsbpro-feeder.exe"
 go build -trimpath -o $binary ./cmd/adsbpro-feeder
 if ($LASTEXITCODE -ne 0) { throw "Windows build failed." }
 $version = & $binary version
-if ($LASTEXITCODE -ne 0 -or $version.Trim() -ne "2.1.0") { throw "Windows binary smoke test failed." }
+if ($LASTEXITCODE -ne 0 -or $version.Trim() -ne "2.2.0") { throw "Windows binary smoke test failed." }
 
 $serviceName = "ADSBProFeeder"
 $stateRoot = Join-Path $env:ProgramData "ADSBPro\Feeder"
@@ -53,6 +53,19 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Could not create the Windows test service: $($createOutput -join ' ')" }
     Start-Service -Name $serviceName
     (Get-Service -Name $serviceName).WaitForStatus([ServiceProcess.ServiceControllerStatus]::Running, [TimeSpan]::FromSeconds(20))
+    $statusResponse = $null
+    for ($attempt = 0; $attempt -lt 40 -and $null -eq $statusResponse; $attempt++) {
+        try { $statusResponse = Invoke-RestMethod -UseBasicParsing -Uri "http://127.0.0.1:54321/api/status" }
+        catch { Start-Sleep -Milliseconds 250 }
+    }
+    if ($null -eq $statusResponse) { throw "Windows status page did not start." }
+    if ($statusResponse.version -ne "2.2.0" -or [string]::IsNullOrWhiteSpace($statusResponse.installationId)) {
+        throw "Windows status page API smoke test failed."
+    }
+    $statusPage = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:54321/"
+    if ($statusPage.Content -notmatch "UPDATE AVAILABLE" -or $statusPage.Content -notmatch "No feeder token") {
+        throw "Windows status page smoke test failed."
+    }
     Stop-Service -Name $serviceName
     (Get-Service -Name $serviceName).WaitForStatus([ServiceProcess.ServiceControllerStatus]::Stopped, [TimeSpan]::FromSeconds(20))
 }

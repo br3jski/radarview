@@ -22,6 +22,28 @@ case "$CASE" in
     test "$(stat -c %a /usr/local/sbin/adsbpro-feeder-rollback)" = 750
     find /var/backups/adsbpro-feeder -name radarview.py -print -quit | grep -q .
     ;;
+  upgrade-preserves)
+    install -d -m 0755 /etc/adsbpro-feeder
+    install -d -m 0700 /var/lib/adsbpro-feeder
+    printf '%s' 'existing-installation' > /var/lib/adsbpro-feeder/paired
+    cat > /etc/adsbpro-feeder/config.env <<'EOF'
+SOURCE_HOST=192.0.2.55
+SOURCE_MODE=sbs
+BEAST_PORT=31005
+SBS_PORT=31003
+FEEDER_LABEL=Roof feeder
+STATUS_LISTEN=127.0.0.1:55432
+AIRCRAFT_JSON=/run/custom/aircraft.json
+EOF
+    PATH="/fakebin:$PATH" ADSB_TEST_RESULT=active /repo/install-v2.sh --binary /bin/true --wait-seconds 5
+    grep -Fxq 'SOURCE_HOST=192.0.2.55' /etc/adsbpro-feeder/config.env
+    grep -Fxq 'SOURCE_MODE=sbs' /etc/adsbpro-feeder/config.env
+    grep -Fxq 'BEAST_PORT=31005' /etc/adsbpro-feeder/config.env
+    grep -Fxq 'SBS_PORT=31003' /etc/adsbpro-feeder/config.env
+    grep -Fxq 'FEEDER_LABEL=Roof feeder' /etc/adsbpro-feeder/config.env
+    grep -Fxq 'STATUS_LISTEN=127.0.0.1:55432' /etc/adsbpro-feeder/config.env
+    grep -Fxq 'AIRCRAFT_JSON=/run/custom/aircraft.json' /etc/adsbpro-feeder/config.env
+    ;;
   invalid|pairing-window)
     install -d -m 0700 /var/lib/adsbpro-feeder
     printf '%s' '{"state":"active"}' > /var/lib/adsbpro-feeder/status.json

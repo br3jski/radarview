@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "2.1.0",
+    [string]$Version = "2.2.0",
     [string]$TokenFile = "",
     [string]$SourceHost = "127.0.0.1",
     [ValidateSet("auto", "beast", "sbs")]
@@ -10,6 +10,8 @@ param(
     [ValidateRange(1, 65535)]
     [int]$SbsPort = 30003,
     [string]$Label = "ADS-B feeder",
+    [string]$StatusListen = "127.0.0.1:54321",
+    [string]$AircraftJson = "",
     [ValidateRange(5, 600)]
     [int]$WaitSeconds = 90,
     [switch]$FunctionsOnly
@@ -151,7 +153,13 @@ try {
         throw "Verified package is incomplete."
     }
     Unblock-File -LiteralPath $installer, $binary
-    & $installer -Binary $binary -TokenFile $TokenFile -SourceHost $SourceHost -SourceMode $SourceMode -BeastPort $BeastPort -SbsPort $SbsPort -Label $Label -WaitSeconds $WaitSeconds
+    $installerArguments = @{ Binary = $binary }
+    foreach ($argumentName in @("TokenFile", "SourceHost", "SourceMode", "BeastPort", "SbsPort", "Label", "StatusListen", "AircraftJson", "WaitSeconds")) {
+        if ($PSBoundParameters.ContainsKey($argumentName)) {
+            $installerArguments[$argumentName] = Get-Variable -Name $argumentName -ValueOnly
+        }
+    }
+    & $installer @installerArguments
 }
 finally {
     Remove-Item -LiteralPath $temporary -Recurse -Force -ErrorAction SilentlyContinue

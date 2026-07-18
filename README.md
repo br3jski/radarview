@@ -33,6 +33,32 @@ sudo /usr/local/bin/adsbpro-feeder status
 
 The result should contain `"state":"active"`.
 
+## Local status page
+
+The feeder includes a black local dashboard with connection status, data rate,
+last received frame, transfer counters and — when your decoder provides it —
+the number of aircraft. It never displays or stores your feeder token.
+
+Open `http://127.0.0.1:54321` in a browser running on the receiver. For a
+headless Linux receiver, open a tunnel from your computer first:
+
+```bash
+ssh -L 54321:127.0.0.1:54321 pi@YOUR_RECEIVER_IP
+```
+
+Then open `http://127.0.0.1:54321` on your computer. Keep the SSH window open.
+
+To make the page reachable directly from other devices in a trusted home LAN,
+install or update with:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/br3jski/radarview/main/radarview_setup.sh | sudo bash -s -- --status-listen 0.0.0.0:54321
+```
+
+The LAN page has no password, so do not expose port `54321` to the internet.
+When a newer feeder is available, the dashboard shows **UPDATE AVAILABLE**.
+Click it for the manual update command. The feeder never updates itself.
+
 ## Windows installation
 
 Open **Windows PowerShell as Administrator** and run:

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>ADS-B.Pro Feeder</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="header">
+      <img class="logo" src="/logo.png" alt="ADS-B.Pro">
+      <div class="heading">
+        <p class="eyebrow">LOCAL FEEDER STATUS</p>
+        <h1 id="label">ADS-B feeder</h1>
+        <div class="connection"><span id="state-dot" class="dot"></span><span id="state">LOADING</span></div>
+      </div>
+      <button id="update-button" class="update hidden" type="button">UPDATE AVAILABLE</button>
+    </header>
+
+    <section class="hero-grid" aria-label="Main feeder status">
+      <article class="metric primary"><span>Aircraft</span><strong id="aircraft">—</strong><small id="aircraft-note">Not reported by local decoder</small></article>
+      <article class="metric"><span>Messages / second</span><strong id="rate">—</strong><small id="frames">0 frames forwarded</small></article>
+      <article class="metric"><span>Last ADS-B frame</span><strong id="last-frame">—</strong><small id="source">Waiting for source</small></article>
+      <article class="metric"><span>Forwarded</span><strong id="bytes">0 B</strong><small id="reconnects">0 reconnects</small></article>
+    </section>
+
+    <section class="details">
+      <div><span>Account</span><strong id="account">Not supplied</strong></div>
+      <div><span>Installation</span><strong id="installation">—</strong></div>
+      <div><span>Connected since</span><strong id="connected">—</strong></div>
+      <div><span>Feeder version</span><strong id="version">—</strong></div>
+    </section>
+
+    <p id="error" class="error hidden"></p>
+    <footer>Local status only · No feeder token is stored or displayed</footer>
+  </main>
+
+  <dialog id="update-dialog">
+    <form method="dialog" class="dialog-card">
+      <button class="close" value="close" aria-label="Close">×</button>
+      <p class="eyebrow">MANUAL UPDATE</p>
+      <h2>Update to <span id="latest-version"></span></h2>
+      <p>Run the command below directly on this feeder. Your installation identity and pairing will be preserved.</p>
+      <div class="tabs"><button id="linux-tab" type="button" class="selected">Linux</button><button id="windows-tab" type="button">Windows</button></div>
+      <pre><code id="update-command"></code></pre>
+      <button id="copy-command" class="copy" type="button">COPY COMMAND</button>
+      <p class="hint">The feeder never installs an update automatically.</p>
+    </form>
+  </dialog>
+  <script src="/app.js" defer></script>
+</body>
+</html>

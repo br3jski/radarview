@@ -12,6 +12,8 @@ Options:
   --beast-port PORT     Beast source port (default: 30005).
   --sbs-port PORT       SBS source port (default: 30003).
   --label LABEL         Installation label (default: ADS-B feeder).
+  --status-listen ADDR  Local status page address (default: 127.0.0.1:54321).
+  --aircraft-json VALUE Optional aircraft.json file path or URL.
   --wait-seconds N      Time to wait for the first accepted frame (default: 90).
   -h, --help            Show this help.
 
@@ -34,13 +36,27 @@ valid_port() {
 }
 
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+EXISTING_CONFIG=/etc/adsbpro-feeder/config.env
+
+existing_config_value() {
+  local key="$1"
+  local fallback="$2"
+  local value=""
+  if [ -f "$EXISTING_CONFIG" ]; then
+    value=$(sed -n "/^${key}=/{s/^${key}=//;p;q;}" "$EXISTING_CONFIG")
+  fi
+  printf '%s' "${value:-$fallback}"
+}
+
 BINARY_PATH=""
 PAIRING_TOKEN_SOURCE="${ADSBPRO_PAIRING_TOKEN_FILE:-}"
-SOURCE_HOST="${ADSBPRO_SOURCE_HOST:-127.0.0.1}"
-SOURCE_MODE="${ADSBPRO_SOURCE_MODE:-auto}"
-BEAST_PORT="${ADSBPRO_BEAST_PORT:-30005}"
-SBS_PORT="${ADSBPRO_SBS_PORT:-30003}"
-FEEDER_LABEL="${ADSBPRO_FEEDER_LABEL:-ADS-B feeder}"
+SOURCE_HOST="${ADSBPRO_SOURCE_HOST:-$(existing_config_value SOURCE_HOST 127.0.0.1)}"
+SOURCE_MODE="${ADSBPRO_SOURCE_MODE:-$(existing_config_value SOURCE_MODE auto)}"
+BEAST_PORT="${ADSBPRO_BEAST_PORT:-$(existing_config_value BEAST_PORT 30005)}"
+SBS_PORT="${ADSBPRO_SBS_PORT:-$(existing_config_value SBS_PORT 30003)}"
+FEEDER_LABEL="${ADSBPRO_FEEDER_LABEL:-$(existing_config_value FEEDER_LABEL 'ADS-B feeder')}"
+STATUS_LISTEN="${ADSBPRO_STATUS_LISTEN:-$(existing_config_value STATUS_LISTEN 127.0.0.1:54321)}"
+AIRCRAFT_JSON="${ADSBPRO_AIRCRAFT_JSON:-$(existing_config_value AIRCRAFT_JSON '')}"
 WAIT_SECONDS="${ADSBPRO_WAIT_SECONDS:-90}"
 
 while [ "$#" -gt 0 ]; do
@@ -52,6 +68,8 @@ while [ "$#" -gt 0 ]; do
     --beast-port) BEAST_PORT="${2:?--beast-port requires a value}"; shift 2 ;;
     --sbs-port) SBS_PORT="${2:?--sbs-port requires a value}"; shift 2 ;;
     --label) FEEDER_LABEL="${2:?--label requires a value}"; shift 2 ;;
+    --status-listen) STATUS_LISTEN="${2:?--status-listen requires a value}"; shift 2 ;;
+    --aircraft-json) AIRCRAFT_JSON="${2:?--aircraft-json requires a value}"; shift 2 ;;
     --wait-seconds) WAIT_SECONDS="${2:?--wait-seconds requires a value}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     --*) fail "Unknown option: $1" ;;
@@ -76,6 +94,10 @@ case "$SOURCE_MODE" in auto|beast|sbs) ;; *) fail "Source mode must be auto, bea
 valid_port "$BEAST_PORT" || fail "Invalid Beast port."
 valid_port "$SBS_PORT" || fail "Invalid SBS port."
 is_safe_line "$FEEDER_LABEL" || fail "Invalid feeder label."
+is_safe_line "$STATUS_LISTEN" || fail "Invalid status listen address."
+[[ "$STATUS_LISTEN" =~ ^(\[[0-9A-Fa-f:]+\]|[A-Za-z0-9._-]+):([0-9]{1,5})$ ]] || fail "Status listen address must be HOST:PORT."
+valid_port "${BASH_REMATCH[2]}" || fail "Invalid status page port."
+if [ -n "$AIRCRAFT_JSON" ]; then is_safe_line "$AIRCRAFT_JSON" || fail "Invalid aircraft.json location."; fi
 if ! [[ "$WAIT_SECONDS" =~ ^[0-9]+$ ]]; then
   fail "Wait time must be between 5 and 600 seconds."
 fi
@@ -141,6 +163,9 @@ trap 'rm -f "$CONFIG_TEMP"' EXIT
   printf 'DATA_DIR=%s\n' "$DATA_DIR"
   printf 'TOKEN_FILE=%s/pairing-token\n' "$DATA_DIR"
   printf 'FEEDER_LABEL=%s\n' "$FEEDER_LABEL"
+  printf 'STATUS_LISTEN=%s\n' "$STATUS_LISTEN"
+  printf 'AIRCRAFT_JSON=%s\n' "$AIRCRAFT_JSON"
+  printf 'UPDATE_URL=https://raw.githubusercontent.com/br3jski/radarview/main/latest.json\n'
 } > "$CONFIG_TEMP"
 install -o root -g root -m 0644 "$CONFIG_TEMP" "$CONFIG_DIR/config.env"
 
@@ -266,4 +291,5 @@ systemctl is-active --quiet adsbpro-feeder.service || {
 echo "Feeder v2 is ACTIVE. Legacy files were retained for rollback."
 echo "Backup: $BACKUP_DIR"
 echo "Status: /usr/local/bin/adsbpro-feeder status"
+echo "Status page: http://$STATUS_LISTEN"
 echo "Rollback: /usr/local/sbin/adsbpro-feeder-rollback"

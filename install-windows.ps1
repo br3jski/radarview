@@ -11,6 +11,8 @@ param(
     [ValidateRange(1, 65535)]
     [int]$SbsPort = 30003,
     [string]$Label = "ADS-B feeder",
+    [string]$StatusListen = "127.0.0.1:54321",
+    [string]$AircraftJson = "",
     [ValidateRange(5, 600)]
     [int]$WaitSeconds = 90
 )
@@ -82,6 +84,34 @@ function Invoke-Sc {
     return $output
 }
 
+function Read-ExistingConfig {
+    param([string]$Path)
+    $result = @{}
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $result }
+    foreach ($line in [IO.File]::ReadAllLines($Path)) {
+        $separator = $line.IndexOf('=')
+        if ($separator -gt 0) {
+            $result[$line.Substring(0, $separator).Trim()] = $line.Substring($separator + 1).Trim()
+        }
+    }
+    return $result
+}
+
+$existingConfig = Read-ExistingConfig -Path $ConfigPath
+foreach ($setting in @(
+    @("SourceHost", "SOURCE_HOST"),
+    @("SourceMode", "SOURCE_MODE"),
+    @("BeastPort", "BEAST_PORT"),
+    @("SbsPort", "SBS_PORT"),
+    @("Label", "FEEDER_LABEL"),
+    @("StatusListen", "STATUS_LISTEN"),
+    @("AircraftJson", "AIRCRAFT_JSON")
+)) {
+    if (-not $PSBoundParameters.ContainsKey($setting[0]) -and $existingConfig.ContainsKey($setting[1])) {
+        Set-Variable -Name $setting[0] -Value $existingConfig[$setting[1]]
+    }
+}
+
 Assert-Administrator
 if (-not (Test-Path -LiteralPath $Binary -PathType Leaf)) {
     throw "Verified feeder binary was not found: $Binary"
@@ -92,8 +122,22 @@ if (-not (Test-Path -LiteralPath $RollbackSource -PathType Leaf)) {
 if ($SourceHost -notmatch '^[A-Za-z0-9._:-]+$') {
     throw "Invalid ADS-B source host."
 }
+if ($SourceMode -notin @("auto", "beast", "sbs")) {
+    throw "Source mode must be auto, beast or sbs."
+}
+if ([int]$BeastPort -lt 1 -or [int]$BeastPort -gt 65535 -or [int]$SbsPort -lt 1 -or [int]$SbsPort -gt 65535) {
+    throw "Invalid ADS-B source port."
+}
 if ([string]::IsNullOrWhiteSpace($Label) -or $Label.Length -gt 255 -or $Label.Contains("`n") -or $Label.Contains("`r")) {
     throw "Invalid feeder label."
+}
+if ($StatusListen -notmatch '^(\[[0-9A-Fa-f:]+\]|[A-Za-z0-9._-]+):([0-9]{1,5})$') {
+    throw "Status listen address must be HOST:PORT."
+}
+$statusPort = [int]$Matches[2]
+if ($statusPort -lt 1 -or $statusPort -gt 65535) { throw "Invalid status page port." }
+if ($AircraftJson.Contains("`n") -or $AircraftJson.Contains("`r") -or $AircraftJson.Length -gt 255) {
+    throw "Invalid aircraft.json location."
 }
 
 $previousService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
@@ -155,6 +199,9 @@ $config = @(
     "DATA_DIR=$DataDir"
     "TOKEN_FILE=$(Join-Path $DataDir 'pairing-token')"
     "FEEDER_LABEL=$Label"
+    "STATUS_LISTEN=$StatusListen"
+    "AIRCRAFT_JSON=$AircraftJson"
+    "UPDATE_URL=https://raw.githubusercontent.com/br3jski/radarview/main/latest.json"
 ) -join "`n"
 Write-Utf8NoBom -Path $ConfigPath -Value ($config + "`n")
 
@@ -246,6 +293,7 @@ catch {
 
 Write-Host "Feeder v2 is ACTIVE."
 Write-Host "Status: & '$ExecutablePath' status"
+Write-Host "Status page: http://$StatusListen"
 Write-Host "Log: $DataDir\feeder.log"
 Write-Host "Backup: $BackupDir"
 Write-Host "Remove service: & '$RollbackPath'"

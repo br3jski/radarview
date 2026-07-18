@@ -50,6 +50,7 @@ type ServerMessage struct {
 	ProtocolVersion int    `json:"protocolVersion,omitempty"`
 	InstallationID  string `json:"installationId,omitempty"`
 	ActivatedAt     string `json:"activatedAt,omitempty"`
+	AccountDisplay  string `json:"accountDisplay,omitempty"`
 }
 
 func CanonicalProof(hello Hello, challenge Challenge) []byte {
