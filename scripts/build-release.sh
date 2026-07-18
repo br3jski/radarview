@@ -37,7 +37,6 @@ build() {
   install -m 0755 "$REPOSITORY_DIR/install-v2.sh" "$package_dir/install-v2.sh"
   install -m 0755 "$REPOSITORY_DIR/rollback-v2.sh" "$package_dir/rollback-v2.sh"
   install -m 0644 "$REPOSITORY_DIR/packaging/adsbpro-feeder.service" "$package_dir/packaging/adsbpro-feeder.service"
-  install -m 0644 "$REPOSITORY_DIR/packaging/config.env" "$package_dir/packaging/config.env"
   COPYFILE_DISABLE=1 tar --no-xattrs -C "$package_dir" -czf "$archive" .
 }
 

@@ -7,9 +7,7 @@ cd "$REPOSITORY_DIR"
 
 shellcheck \
   radarview_setup.sh \
-  radarview_setup-nogit.sh \
   install-v2.sh \
-  install-release.sh \
   rollback-v2.sh \
   scripts/build-release.sh \
   scripts/test-installer.sh \
@@ -19,9 +17,7 @@ shellcheck \
 
 bash -n \
   radarview_setup.sh \
-  radarview_setup-nogit.sh \
   install-v2.sh \
-  install-release.sh \
   rollback-v2.sh \
   scripts/build-release.sh \
   scripts/test-installer.sh \
@@ -45,8 +41,7 @@ for platform in linux-amd64 linux-arm64 linux-armv6 linux-armv7; do
     ./adsbpro-feeder \
     ./install-v2.sh \
     ./rollback-v2.sh \
-    ./packaging/adsbpro-feeder.service \
-    ./packaging/config.env; do
+    ./packaging/adsbpro-feeder.service; do
     tar -tzf "$archive" | grep -Fxq "$required_path"
   done
 done

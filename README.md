@@ -1,99 +1,77 @@
-# ADS-B.Pro feeder
+# ADS-B.Pro Feeder
 
-The supported feeder is `adsbpro-feeder`, a static Go client using feeder
-protocol v2. It pairs once over TLS on `feed.ads-b.pro:48582` and then forwards
-only the raw Beast or SBS stream. Tokens and signatures are not appended to
-aircraft frames.
+This installer connects your ADS-B receiver to ADS-B.Pro.
 
-The legacy `radarview.py` client and port `48581` remain available for rollback
-and backward compatibility.
+You need:
 
-An ADS-B decoder such as readsb or dump1090 must already expose Beast on port
-`30005` or SBS on port `30003`. The installer does not replace or reconfigure
-the receiver's decoder.
+- a Linux receiver with readsb or dump1090 already working;
+- Beast data on port `30005` or SBS data on port `30003`;
+- your ADS-B.Pro feeder token.
 
-## Install or migrate
+## New installation
 
-Download the installer first and run it as root:
+Run this command on your receiver:
 
 ```bash
-curl -fsSLo /tmp/adsbpro-setup.sh \
-  https://raw.githubusercontent.com/br3jski/radarview/main/radarview_setup.sh
-sudo bash /tmp/adsbpro-setup.sh
+curl -fsSL https://raw.githubusercontent.com/br3jski/radarview/main/radarview_setup.sh | sudo bash
 ```
 
-The installer:
+When asked, paste your feeder token and press Enter. The token is not displayed
+while you type.
 
-1. detects Linux `amd64`, `arm64`, `armv6` or `armv7`;
-2. downloads the matching release package;
-3. verifies the signed manifest and SHA-256 checksum;
-4. reads an existing legacy token or prompts for one without displaying it;
-5. installs the hardened `adsbpro-feeder.service` under a dedicated user;
-6. waits for the server to accept the first ADS-B frame;
-7. disables `radarview.service` only after v2 reaches `ACTIVE`.
+The installation is complete only when you see:
 
-Existing legacy files are never deleted. If pairing or the data source fails,
-legacy remains unchanged. A first v2 installation on an account can pair with
-the current feeder token. Further installations require a 10-minute pairing
-window opened in the ADS-B.Pro account panel.
-
-### Non-interactive token input
-
-Store the token in a root-readable temporary file and pass its path:
-
-```bash
-sudo bash /tmp/adsbpro-setup.sh --token-file /path/to/pairing-token
+```text
+Feeder v2 is ACTIVE.
 ```
 
-The token file copied into the feeder data directory is mode `0600` and is
-deleted by the client only after `ACTIVE` and the first accepted frame. The
-source file supplied with `--token-file` is not deleted by the installer.
-
-### Source overrides
-
-By default the client waits up to five seconds for a valid Beast frame from
-`127.0.0.1:30005`, then falls back to SBS on `127.0.0.1:30003`.
+Check the feeder at any time with:
 
 ```bash
-sudo bash /tmp/adsbpro-setup.sh \
-  --source-mode beast \
-  --source-host 127.0.0.1 \
-  --beast-port 30005
-```
-
-Supported options are listed by:
-
-```bash
-bash /tmp/adsbpro-setup.sh --help
-```
-
-## Operations
-
-```bash
-sudo systemctl status adsbpro-feeder.service
 sudo /usr/local/bin/adsbpro-feeder status
-sudo journalctl -u adsbpro-feeder.service
 ```
 
-Rollback keeps the v2 identity for a later retry and re-enables legacy:
+The result should contain `"state":"active"`.
+
+## Migrating an old RadarView feeder
+
+If your receiver already uses `/opt/radarview.py`, run exactly the same command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/br3jski/radarview/main/radarview_setup.sh | sudo bash
+```
+
+The installer reads the existing token automatically. The old feeder keeps
+working until the new feeder connects and ADS-B.Pro accepts its first frame.
+Only then is the old `radarview.service` disabled.
+
+The old script is not deleted. If migration fails, the old feeder remains
+active and nothing needs to be restored.
+
+## Migrating another receiver on the same account
+
+Open a 10-minute feeder pairing window in your ADS-B.Pro account panel, then run
+the installation command. If this is the account's first v2 receiver, no
+pairing window is needed.
+
+## Roll back to the old feeder
+
+This command is available only on receivers migrated from the old script:
 
 ```bash
 sudo /usr/local/sbin/adsbpro-feeder-rollback
 ```
 
-There is no automatic updater. Installing a newer signed release is an explicit
-administrator action.
+It stops feeder v2 and starts the preserved `radarview.service` again.
 
-## Build and test
+## If installation fails
+
+Do not remove the old script. Check the error with:
 
 ```bash
-go test ./...
-VERSION=2.0.0 ./scripts/build-release.sh
+sudo journalctl -u adsbpro-feeder.service -n 50 --no-pager
 ```
 
-For a signed release, set `RELEASE=true` and point `RELEASE_SIGNING_KEY` at the
-ECDSA P-256 release signing key. The public verification key is committed in
-`packaging/release-signing-public.pem` and embedded in the public bootstrap
-installer. Release signatures use ECDSA with SHA-256 and are verified by
-OpenSSL. Public packages are stored under `releases/vVERSION`; a GitHub Release
-can be added as an optional mirror without changing the trust model.
+The most common cause is that readsb or dump1090 is not providing data on port
+`30005` or `30003`. After fixing the ADS-B source, run the installation command
+again.
