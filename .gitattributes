@@ -1,0 +1,10 @@
+*.sh text eol=lf
+*.go text eol=lf
+*.mod text eol=lf
+*.sum text eol=lf
+*.ps1 text eol=lf
+releases/**/SHA256SUMS-* -text
+releases/**/*.sig binary
+releases/**/*.tar.gz binary
+releases/**/*.zip binary
+releases/**/*.exe binary
