@@ -45,13 +45,22 @@ type status struct {
 
 func main() {
 	configuration := loadConfig()
-	if len(os.Args) > 1 && os.Args[1] == "status" {
-		value, err := os.ReadFile(filepath.Join(configuration.DataDir, "status.json"))
-		if err != nil {
-			log.Fatal(err)
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "run":
+		case "status":
+			value, err := os.ReadFile(filepath.Join(configuration.DataDir, "status.json"))
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println(string(value))
+			return
+		case "version":
+			fmt.Println(version)
+			return
+		default:
+			log.Fatalf("usage: %s [run|status|version]", filepath.Base(os.Args[0]))
 		}
-		fmt.Println(string(value))
-		return
 	}
 	identityValue, err := identity.LoadOrCreate(configuration.DataDir)
 	if err != nil {

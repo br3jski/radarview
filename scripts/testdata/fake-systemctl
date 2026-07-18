@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -eu
+
+STATE_DIR=/run/fake-systemctl
+mkdir -p "$STATE_DIR"
+COMMAND="${1:-}"
+shift || true
+UNIT="${*: -1}"
+
+case "$COMMAND" in
+  daemon-reload|reset-failed)
+    exit 0
+    ;;
+  cat)
+    test -f "/etc/systemd/system/$UNIT" || test -f "/lib/systemd/system/$UNIT"
+    ;;
+  is-active)
+    if [ -f "$STATE_DIR/$UNIT.active" ]; then
+      [ "${1:-}" = --quiet ] || echo active
+      exit 0
+    fi
+    [ "${1:-}" = --quiet ] || echo inactive
+    exit 3
+    ;;
+  is-enabled)
+    if [ -f "$STATE_DIR/$UNIT.enabled" ]; then
+      [ "${1:-}" = --quiet ] || echo enabled
+      exit 0
+    fi
+    [ "${1:-}" = --quiet ] || echo disabled
+    exit 1
+    ;;
+  enable)
+    touch "$STATE_DIR/$UNIT.enabled"
+    if printf '%s\n' "$*" | grep -q -- --now; then
+      touch "$STATE_DIR/$UNIT.active"
+    fi
+    ;;
+  restart|start)
+    touch "$STATE_DIR/$UNIT.active"
+    if [ "$UNIT" = adsbpro-feeder.service ]; then
+      case "${ADSB_TEST_RESULT:-active}" in
+        active)
+          rm -f /var/lib/adsbpro-feeder/pairing-token
+          printf '%s' '{"state":"active","installationId":"test","inputFormat":"beast"}' > /var/lib/adsbpro-feeder/status.json
+          ;;
+        invalid)
+          printf '%s' '{"state":"disconnected","error":"server rejected connection: INVALID_TOKEN"}' > /var/lib/adsbpro-feeder/status.json
+          ;;
+        pairing-window)
+          printf '%s' '{"state":"disconnected","error":"server rejected connection: PAIRING_WINDOW_REQUIRED"}' > /var/lib/adsbpro-feeder/status.json
+          ;;
+      esac
+    fi
+    ;;
+  stop)
+    rm -f "$STATE_DIR/$UNIT.active"
+    ;;
+  disable)
+    if [ "$UNIT" = radarview.service ] && [ "${ADSB_TEST_LEGACY_DISABLE_FAIL:-false}" = true ]; then
+      exit 1
+    fi
+    rm -f "$STATE_DIR/$UNIT.enabled"
+    if printf '%s\n' "$*" | grep -q -- --now; then
+      rm -f "$STATE_DIR/$UNIT.active"
+    fi
+    ;;
+  *)
+    echo "unexpected systemctl command: $COMMAND $*" >&2
+    exit 2
+    ;;
+esac

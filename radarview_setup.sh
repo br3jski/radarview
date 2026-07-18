@@ -1,168 +1,104 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-validate_token() {
-  local token="$1"
-  if [[ $token =~ ^ADS-[a-f0-9]{32}$ ]]; then
-    return 0
-  else
-    return 1
-  fi
-}
+usage() {
+  cat <<'EOF'
+ADS-B.Pro feeder v2 installer
 
-get_user_token() {
-  while true; do
-    read -p "Please enter your RadarView token (format: ADS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX): " token
-    if validate_token "$token"; then
-      echo "$token"
-      return 0
-    else
-      echo "Invalid token format. Please try again."
-    fi
-  done
-}
+Usage: radarview_setup.sh [options]
 
-find_adsb_decoder() {
-  local candidate
-  local path
+Bootstrap options:
+  --version VERSION     Install a specific release (default: 2.0.0).
+  -h, --help            Show this help.
 
-  for candidate in dump1090-fa dump1090-mutability dump1090 readsb; do
-    path=$(command -v "$candidate" 2>/dev/null)
-    if [ -n "$path" ] && [ -x "$path" ]; then
-      echo "$path"
-      return 0
-    fi
-  done
+Feeder options passed to the verified installer:
+  --token-file PATH
+  --source-host HOST
+  --source-mode auto|beast|sbs
+  --beast-port PORT
+  --sbs-port PORT
+  --label LABEL
+  --wait-seconds N
 
-  for path in /usr/bin/dump1090-fa /usr/bin/dump1090-mutability /usr/bin/dump1090 /usr/bin/readsb /usr/local/bin/readsb; do
-    if [ -x "$path" ]; then
-      echo "$path"
-      return 0
-    fi
-  done
-
-  return 1
-}
-
-radarview_create_config() {
-  local user_token="$1"
-  
-  # Pobierz plik radarview.py, jeśli nie istnieje
-  if [ ! -f radarview.py ]; then
-    wget https://raw.githubusercontent.com/br3jski/radarview/main/radarview.py
-  fi
-  
-  cp radarview.py /opt/radarview.py
-  if [ $? -ne 0 ]; then
-    echo "Failed to copy radarview.py"
-    exit 1
-  fi
-  chmod +x /opt/radarview.py
-
-  # Sprawdzenie wersji Pythona
-  if python_command=$(command -v python3 2>/dev/null); then
-    :
-  elif python_command=$(command -v python 2>/dev/null); then
-    :
-  else
-    echo "Python not found. Please install Python and try again."
-    exit 1
-  fi
-
-  echo "Updating radarview.py with user token..."
-
-  # Uaktualnienie pliku radarview.py
-  "$python_command" - "$user_token" << 'EOF'
-import re
-import sys
-
-user_token = sys.argv[1]
-with open('/opt/radarview.py', 'r') as file:
-    content = file.read()
-new_token_line = "USER_TOKEN = '" + user_token + "'"
-content = re.sub(r"USER_TOKEN = .*", new_token_line, content)
-with open('/opt/radarview.py', 'w') as file:
-    file.write(content)
+Existing radarview.py installations are migrated automatically. The legacy
+service is disabled only after v2 reaches ACTIVE and sends an accepted frame.
 EOF
-
-  if grep -q "USER_TOKEN = '$user_token'" /opt/radarview.py; then
-    echo "Successfully updated radarview.py with user token."
-  else
-    echo "Failed to update radarview.py with token. Please check the file manually."
-    exit 1
-  fi
 }
 
-radarview_create_service() {
-  SERVICE_FILE="/etc/systemd/system/radarview.service"
-  cat > "$SERVICE_FILE" << EOF
-[Unit]
-Description=RadarView Python service
-After=network-online.target
-
-[Service]
-Type=simple
-ExecStartPre=/bin/sleep 60
-ExecStart=$python_command /opt/radarview.py
-User=root
-Restart=on-failure
-StartLimitBurst=2
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-  systemctl daemon-reload
-  systemctl start radarview
-  systemctl enable radarview
-}
-
-install_dump() {
-  wget https://www.flightaware.com/adsb/piaware/files/packages/pool/piaware/f/flightaware-apt-repository/flightaware-apt-repository_1.1_all.deb -O /opt/farepo.deb
-  dpkg -i /opt/farepo.deb
-  apt update
-  apt install -y dump1090-fa
-  rm /opt/farepo.deb
-}
-
-clean_up() {
-  [ -f /opt/farepo.deb ] && rm /opt/farepo.deb
-}
-
-# Main script
-echo "Welcome to the RadarView setup script!"
-
-if [ "$(id -u)" -ne 0 ]; then
-  echo "Please run this script as root (use sudo or sudo su)"
+fail() {
+  echo "ERROR: $*" >&2
   exit 1
-fi
+}
 
-user_token=$(get_user_token)
-
-adsb_decoder=$(find_adsb_decoder)
-if [ -n "$adsb_decoder" ]; then
-  echo "Found ADS-B decoder: $adsb_decoder"
-  radarview_create_config "$user_token"
-  radarview_create_service
-else
-  echo "Dump1090 / readsb are not installed. Do you want to install it now? (y/n)"
-  read -r key
-  case "$key" in
-    y|Y)
-      install_dump
-      radarview_create_config "$user_token"
-      radarview_create_service
-      ;;
-    n|N)
-      echo "User refused installing Dump1090. Exiting now"
-      exit 1
-      ;;
-    *)
-      echo "Invalid input. Exiting now."
-      exit 1
-      ;;
+VERSION="${ADSBPRO_VERSION:-2.0.0}"
+INSTALLER_ARGS=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --version) VERSION="${2:?--version requires a value}"; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) INSTALLER_ARGS+=("$1"); shift ;;
   esac
+done
+
+[ "$(id -u)" -eq 0 ] || fail "Run this installer as root (for example with sudo)."
+[[ "$VERSION" =~ ^[0-9A-Za-z][0-9A-Za-z._-]{0,63}$ ]] || fail "Invalid release version."
+
+case "$(uname -m)" in
+  x86_64|amd64) PLATFORM=linux-amd64 ;;
+  aarch64|arm64) PLATFORM=linux-arm64 ;;
+  armv7l) PLATFORM=linux-armv7 ;;
+  armv6l) PLATFORM=linux-armv6 ;;
+  *) fail "Unsupported architecture: $(uname -m)" ;;
+esac
+
+for command_name in sha256sum tar mktemp; do
+  command -v "$command_name" >/dev/null 2>&1 || fail "$command_name is required."
+done
+
+if ! command -v curl >/dev/null 2>&1 || ! command -v openssl >/dev/null 2>&1; then
+  if command -v apt-get >/dev/null 2>&1; then
+    echo "Installing HTTPS and signature verification tools..."
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl openssl
+  else
+    fail "curl and openssl are required. Install them and run this installer again."
+  fi
 fi
 
-clean_up
+REPOSITORY_URL="${REPOSITORY_URL:-https://github.com/br3jski/radarview/releases/download/v${VERSION}}"
+ASSET="adsbpro-feeder-${VERSION}-${PLATFORM}.tar.gz"
+CHECKSUMS="SHA256SUMS-${VERSION}"
+TEMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TEMP_DIR"' EXIT
 
-echo "RadarView setup completed successfully."
+echo "Downloading ADS-B.Pro feeder v${VERSION} for ${PLATFORM}..."
+curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+  "$REPOSITORY_URL/$ASSET" -o "$TEMP_DIR/$ASSET"
+curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+  "$REPOSITORY_URL/$CHECKSUMS" -o "$TEMP_DIR/$CHECKSUMS"
+curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+  "$REPOSITORY_URL/$CHECKSUMS.sig" -o "$TEMP_DIR/$CHECKSUMS.sig"
+
+cat > "$TEMP_DIR/release-signing-public.pem" <<'EOF'
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwdJsBoq27ca5SsbOv+v6MsiuCx2u
+sKMbr69tLhqXBC2X3o6PZGaNg3K2srF0zjb6Y2musEm9opwy42NUVaX83A==
+-----END PUBLIC KEY-----
+EOF
+openssl dgst -sha256 \
+  -verify "$TEMP_DIR/release-signing-public.pem" \
+  -signature "$TEMP_DIR/$CHECKSUMS.sig" \
+  "$TEMP_DIR/$CHECKSUMS"
+(
+  cd "$TEMP_DIR"
+  grep -F "  $ASSET" "$CHECKSUMS" | grep -E "^[0-9a-fA-F]{64}  ${ASSET}$" | sha256sum -c -
+)
+
+install -d -m 0700 "$TEMP_DIR/package"
+tar -xzf "$TEMP_DIR/$ASSET" -C "$TEMP_DIR/package"
+[ -x "$TEMP_DIR/package/install-v2.sh" ] || fail "Verified package does not contain install-v2.sh."
+[ -x "$TEMP_DIR/package/adsbpro-feeder" ] || fail "Verified package does not contain the feeder binary."
+
+"$TEMP_DIR/package/install-v2.sh" \
+  --binary "$TEMP_DIR/package/adsbpro-feeder" \
+  "${INSTALLER_ARGS[@]}"
