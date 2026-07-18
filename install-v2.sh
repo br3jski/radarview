@@ -23,7 +23,7 @@ install -m 0644 "$SCRIPT_DIR/packaging/config.env" /etc/adsbpro-feeder/config.en
 install -m 0644 "$SCRIPT_DIR/packaging/adsbpro-feeder.service" /etc/systemd/system/adsbpro-feeder.service
 
 TOKEN=""
-for legacy_script in /opt/radarview/radarview.py /opt/radarview.py; do
+for legacy_script in /opt/radarview.py /opt/radarview/radarview.py; do
   if [ ! -f "$legacy_script" ]; then
     continue
   fi
