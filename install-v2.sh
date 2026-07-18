@@ -23,14 +23,20 @@ install -m 0644 "$SCRIPT_DIR/packaging/config.env" /etc/adsbpro-feeder/config.en
 install -m 0644 "$SCRIPT_DIR/packaging/adsbpro-feeder.service" /etc/systemd/system/adsbpro-feeder.service
 
 TOKEN=""
-if [ -f /opt/radarview.py ]; then
-  TOKEN=$(sed -n "s/^USER_TOKEN = ['\"]\(ADS-[A-Za-z0-9]*\)['\"].*/\1/p" /opt/radarview.py | head -n 1)
-fi
+for legacy_script in /opt/radarview/radarview.py /opt/radarview.py; do
+  if [ ! -f "$legacy_script" ]; then
+    continue
+  fi
+  TOKEN=$(sed -nE "s/^[[:space:]]*USER_TOKEN[[:space:]]*=[[:space:]]*['\"]([^'\"]+)['\"].*/\1/p" "$legacy_script" | head -n 1)
+  if [ -n "$TOKEN" ]; then
+    break
+  fi
+done
 if [ -z "$TOKEN" ]; then
-  read -r -s -p "ADS-B.Pro feeder token: " TOKEN
+  read -r -s -p "ADS-B.Pro legacy feeder token: " TOKEN
   echo
 fi
-if ! printf '%s' "$TOKEN" | grep -Eq '^ADS-[A-Za-z0-9]{32}$'; then
+if ! printf '%s' "$TOKEN" | LC_ALL=C grep -Eq '^[[:graph:]]{1,255}$'; then
   echo "Invalid token format." >&2
   exit 1
 fi
