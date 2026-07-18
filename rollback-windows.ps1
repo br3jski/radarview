@@ -21,5 +21,8 @@ if ($null -ne $service) {
     }
 }
 
+Get-NetFirewallRule -DisplayName "ADS-B.Pro Feeder Status" -ErrorAction SilentlyContinue |
+    Remove-NetFirewallRule -ErrorAction SilentlyContinue
+
 Write-Host "The ADS-B.Pro Windows service was removed."
 Write-Host "The installation identity in $env:ProgramData\ADSBPro\Feeder was retained."

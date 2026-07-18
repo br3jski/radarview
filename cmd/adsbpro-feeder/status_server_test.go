@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -119,5 +121,50 @@ func TestStatusHandlerRejectsWrites(t *testing.T) {
 	statusHandler(testMonitor(t)).ServeHTTP(response, request)
 	if response.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", response.Code)
+	}
+}
+
+func TestPrivateStatusAddressClassification(t *testing.T) {
+	tests := map[string]bool{
+		"127.0.0.1": true, "10.12.1.4": true, "172.20.1.4": true,
+		"192.168.50.2": true, "100.64.12.3": true, "fd7a:115c:a1e0::1": true,
+		"8.8.8.8": false, "1.1.1.1": false, "2001:4860:4860::8888": false,
+		"169.254.2.3": true,
+	}
+	for rawAddress, expected := range tests {
+		if actual := statusAddressIsPrivate(netip.MustParseAddr(rawAddress)); actual != expected {
+			t.Fatalf("statusAddressIsPrivate(%s) = %v, want %v", rawAddress, actual, expected)
+		}
+	}
+}
+
+func TestExplicitStatusAddressIsNotExpanded(t *testing.T) {
+	addresses, err := resolveStatusListenAddresses("0.0.0.0:54321")
+	if err != nil || len(addresses) != 1 || addresses[0] != "0.0.0.0:54321" {
+		t.Fatalf("unexpected explicit addresses: %#v, %v", addresses, err)
+	}
+}
+
+func TestPrivateStatusResolutionNeverReturnsPublicAddress(t *testing.T) {
+	addresses, err := resolveStatusListenAddresses("private:54321")
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundLoopback := false
+	for _, listenAddress := range addresses {
+		host, _, splitErr := net.SplitHostPort(listenAddress)
+		if splitErr != nil {
+			t.Fatal(splitErr)
+		}
+		address := netip.MustParseAddr(host)
+		if address.String() == "127.0.0.1" {
+			foundLoopback = true
+		}
+		if !statusAddressIsPrivate(address) {
+			t.Fatalf("public address %s was selected", address)
+		}
+	}
+	if !foundLoopback {
+		t.Fatal("private status resolution omitted IPv4 loopback")
 	}
 }

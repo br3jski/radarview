@@ -23,7 +23,7 @@ import (
 	"github.com/br3jski/radarview/internal/source"
 )
 
-var version = "2.2.0"
+var version = "2.2.1"
 
 type config struct {
 	ServerAddress string
@@ -312,7 +312,7 @@ func loadConfig() config {
 		ServerAddress: get("SERVER_ADDR", "feed.ads-b.pro:48582"), ServerName: get("SERVER_NAME", "feed.ads-b.pro"),
 		Source:  source.Config{Host: get("SOURCE_HOST", "127.0.0.1"), Mode: get("SOURCE_MODE", "auto"), BeastPort: port("BEAST_PORT", 30005), SBSPort: port("SBS_PORT", 30003)},
 		DataDir: dataDir, TokenFile: get("TOKEN_FILE", filepath.Join(dataDir, "pairing-token")), Label: get("FEEDER_LABEL", "ADS-B feeder"),
-		StatusListen: get("STATUS_LISTEN", "127.0.0.1:54321"), AircraftJSON: get("AIRCRAFT_JSON", ""),
+		StatusListen: get("STATUS_LISTEN", "private:54321"), AircraftJSON: get("AIRCRAFT_JSON", ""),
 		UpdateURL: get("UPDATE_URL", "https://raw.githubusercontent.com/br3jski/radarview/main/latest.json"),
 	}
 }

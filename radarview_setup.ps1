@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "2.2.0",
+    [string]$Version = "2.2.1",
     [string]$TokenFile = "",
     [string]$SourceHost = "127.0.0.1",
     [ValidateSet("auto", "beast", "sbs")]
@@ -10,7 +10,7 @@ param(
     [ValidateRange(1, 65535)]
     [int]$SbsPort = 30003,
     [string]$Label = "ADS-B feeder",
-    [string]$StatusListen = "127.0.0.1:54321",
+    [string]$StatusListen = "private:54321",
     [string]$AircraftJson = "",
     [ValidateRange(5, 600)]
     [int]$WaitSeconds = 90,

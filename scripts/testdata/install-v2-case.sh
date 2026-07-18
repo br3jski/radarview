@@ -20,7 +20,16 @@ case "$CASE" in
     test ! -e /var/lib/adsbpro-feeder/pairing-token
     test "$(stat -c %a /var/lib/adsbpro-feeder)" = 700
     test "$(stat -c %a /usr/local/sbin/adsbpro-feeder-rollback)" = 750
+    grep -Fxq 'STATUS_LISTEN=private:54321' /etc/adsbpro-feeder/config.env
     find /var/backups/adsbpro-feeder -name radarview.py -print -quit | grep -q .
+    ;;
+  upgrade-private-default)
+    install -d -m 0755 /etc/adsbpro-feeder
+    install -d -m 0700 /var/lib/adsbpro-feeder
+    printf '%s' 'existing-installation' > /var/lib/adsbpro-feeder/paired
+    printf '%s\n' 'STATUS_LISTEN=127.0.0.1:54321' > /etc/adsbpro-feeder/config.env
+    PATH="/fakebin:$PATH" ADSB_TEST_RESULT=active /repo/install-v2.sh --binary /bin/true --wait-seconds 5
+    grep -Fxq 'STATUS_LISTEN=private:54321' /etc/adsbpro-feeder/config.env
     ;;
   upgrade-preserves)
     install -d -m 0755 /etc/adsbpro-feeder

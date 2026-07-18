@@ -11,7 +11,7 @@ param(
     [ValidateRange(1, 65535)]
     [int]$SbsPort = 30003,
     [string]$Label = "ADS-B feeder",
-    [string]$StatusListen = "127.0.0.1:54321",
+    [string]$StatusListen = "private:54321",
     [string]$AircraftJson = "",
     [ValidateRange(5, 600)]
     [int]$WaitSeconds = 90
@@ -21,6 +21,7 @@ Set-StrictMode -Version 2.0
 $ErrorActionPreference = "Stop"
 
 $ServiceName = "ADSBProFeeder"
+$FirewallRuleName = "ADS-B.Pro Feeder Status"
 $ProgramRoot = Join-Path $env:ProgramFiles "ADSBPro\Feeder"
 $ExecutablePath = Join-Path $ProgramRoot "adsbpro-feeder.exe"
 $StateRoot = Join-Path $env:ProgramData "ADSBPro\Feeder"
@@ -97,6 +98,28 @@ function Read-ExistingConfig {
     return $result
 }
 
+function Set-StatusFirewallRule {
+    param([string]$ListenAddress)
+    Get-NetFirewallRule -DisplayName $FirewallRuleName -ErrorAction SilentlyContinue |
+        Remove-NetFirewallRule -ErrorAction SilentlyContinue
+    $separator = $ListenAddress.LastIndexOf(':')
+    if ($separator -lt 1) { return }
+    $listenHost = $ListenAddress.Substring(0, $separator)
+    if ($listenHost -in @("127.0.0.1", "[::1]", "localhost")) { return }
+    $listenPort = [int]$ListenAddress.Substring($separator + 1)
+    New-NetFirewallRule `
+        -DisplayName $FirewallRuleName `
+        -Group "ADS-B.Pro" `
+        -Direction Inbound `
+        -Action Allow `
+        -Protocol TCP `
+        -LocalPort $listenPort `
+        -Program $ExecutablePath `
+        -Profile Any `
+        -RemoteAddress @("LocalSubnet", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "169.254.0.0/16", "fc00::/7") `
+        -EdgeTraversalPolicy Block | Out-Null
+}
+
 $existingConfig = Read-ExistingConfig -Path $ConfigPath
 foreach ($setting in @(
     @("SourceHost", "SOURCE_HOST"),
@@ -110,6 +133,9 @@ foreach ($setting in @(
     if (-not $PSBoundParameters.ContainsKey($setting[0]) -and $existingConfig.ContainsKey($setting[1])) {
         Set-Variable -Name $setting[0] -Value $existingConfig[$setting[1]]
     }
+}
+if (-not $PSBoundParameters.ContainsKey("StatusListen") -and $StatusListen -eq "127.0.0.1:54321") {
+    $StatusListen = "private:54321"
 }
 
 Assert-Administrator
@@ -164,6 +190,7 @@ function Restore-PreviousInstallation {
         Remove-Item -LiteralPath $ExecutablePath -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $ConfigPath -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $RollbackPath -Force -ErrorAction SilentlyContinue
+        Set-StatusFirewallRule -ListenAddress "127.0.0.1:54321"
         return
     }
     if (Test-Path -LiteralPath (Join-Path $BackupDir "adsbpro-feeder.exe")) {
@@ -177,6 +204,13 @@ function Restore-PreviousInstallation {
     }
     if ($previousWasRunning) {
         Start-Service -Name $ServiceName
+    }
+    $restoredConfig = Read-ExistingConfig -Path $ConfigPath
+    if ($restoredConfig.ContainsKey("STATUS_LISTEN")) {
+        Set-StatusFirewallRule -ListenAddress $restoredConfig["STATUS_LISTEN"]
+    }
+    else {
+        Set-StatusFirewallRule -ListenAddress "127.0.0.1:54321"
     }
 }
 
@@ -246,6 +280,7 @@ else {
 }
 Invoke-Sc description $ServiceName "Sends local ADS-B data to ADS-B.Pro using feeder protocol v2." | Out-Null
 Invoke-Sc failure $ServiceName "reset=" "86400" "actions=" "restart/5000/restart/15000/restart/60000" | Out-Null
+Set-StatusFirewallRule -ListenAddress $StatusListen
 
 Remove-Item -LiteralPath (Join-Path $DataDir "status.json") -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath (Join-Path $DataDir "status.json.new") -Force -ErrorAction SilentlyContinue
@@ -293,7 +328,12 @@ catch {
 
 Write-Host "Feeder v2 is ACTIVE."
 Write-Host "Status: & '$ExecutablePath' status"
-Write-Host "Status page: http://$StatusListen"
+if ($StatusListen.StartsWith("private:")) {
+    Write-Host "Status page: http://YOUR_RECEIVER_IP:$statusPort"
+}
+else {
+    Write-Host "Status page: http://$StatusListen"
+}
 Write-Host "Log: $DataDir\feeder.log"
 Write-Host "Backup: $BackupDir"
 Write-Host "Remove service: & '$RollbackPath'"

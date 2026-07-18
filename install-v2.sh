@@ -12,7 +12,7 @@ Options:
   --beast-port PORT     Beast source port (default: 30005).
   --sbs-port PORT       SBS source port (default: 30003).
   --label LABEL         Installation label (default: ADS-B feeder).
-  --status-listen ADDR  Local status page address (default: 127.0.0.1:54321).
+  --status-listen ADDR  Status page address (default: private:54321 for LAN/VPN).
   --aircraft-json VALUE Optional aircraft.json file path or URL.
   --wait-seconds N      Time to wait for the first accepted frame (default: 90).
   -h, --help            Show this help.
@@ -55,7 +55,14 @@ SOURCE_MODE="${ADSBPRO_SOURCE_MODE:-$(existing_config_value SOURCE_MODE auto)}"
 BEAST_PORT="${ADSBPRO_BEAST_PORT:-$(existing_config_value BEAST_PORT 30005)}"
 SBS_PORT="${ADSBPRO_SBS_PORT:-$(existing_config_value SBS_PORT 30003)}"
 FEEDER_LABEL="${ADSBPRO_FEEDER_LABEL:-$(existing_config_value FEEDER_LABEL 'ADS-B feeder')}"
-STATUS_LISTEN="${ADSBPRO_STATUS_LISTEN:-$(existing_config_value STATUS_LISTEN 127.0.0.1:54321)}"
+EXISTING_STATUS_LISTEN=$(existing_config_value STATUS_LISTEN private:54321)
+if [ -n "${ADSBPRO_STATUS_LISTEN+x}" ]; then
+  STATUS_LISTEN="$ADSBPRO_STATUS_LISTEN"
+elif [ "$EXISTING_STATUS_LISTEN" = 127.0.0.1:54321 ]; then
+  STATUS_LISTEN=private:54321
+else
+  STATUS_LISTEN="$EXISTING_STATUS_LISTEN"
+fi
 AIRCRAFT_JSON="${ADSBPRO_AIRCRAFT_JSON:-$(existing_config_value AIRCRAFT_JSON '')}"
 WAIT_SECONDS="${ADSBPRO_WAIT_SECONDS:-90}"
 
@@ -96,7 +103,8 @@ valid_port "$SBS_PORT" || fail "Invalid SBS port."
 is_safe_line "$FEEDER_LABEL" || fail "Invalid feeder label."
 is_safe_line "$STATUS_LISTEN" || fail "Invalid status listen address."
 [[ "$STATUS_LISTEN" =~ ^(\[[0-9A-Fa-f:]+\]|[A-Za-z0-9._-]+):([0-9]{1,5})$ ]] || fail "Status listen address must be HOST:PORT."
-valid_port "${BASH_REMATCH[2]}" || fail "Invalid status page port."
+STATUS_PORT="${BASH_REMATCH[2]}"
+valid_port "$STATUS_PORT" || fail "Invalid status page port."
 if [ -n "$AIRCRAFT_JSON" ]; then is_safe_line "$AIRCRAFT_JSON" || fail "Invalid aircraft.json location."; fi
 if ! [[ "$WAIT_SECONDS" =~ ^[0-9]+$ ]]; then
   fail "Wait time must be between 5 and 600 seconds."
@@ -291,5 +299,9 @@ systemctl is-active --quiet adsbpro-feeder.service || {
 echo "Feeder v2 is ACTIVE. Legacy files were retained for rollback."
 echo "Backup: $BACKUP_DIR"
 echo "Status: /usr/local/bin/adsbpro-feeder status"
-echo "Status page: http://$STATUS_LISTEN"
+if [[ "$STATUS_LISTEN" = private:* ]]; then
+  echo "Status page: http://YOUR_RECEIVER_IP:$STATUS_PORT"
+else
+  echo "Status page: http://$STATUS_LISTEN"
+fi
 echo "Rollback: /usr/local/sbin/adsbpro-feeder-rollback"

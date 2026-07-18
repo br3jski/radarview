@@ -39,23 +39,25 @@ The feeder includes a black local dashboard with connection status, data rate,
 last received frame, transfer counters and — when your decoder provides it —
 the number of aircraft. It never displays or stores your feeder token.
 
-Open `http://127.0.0.1:54321` in a browser running on the receiver. For a
-headless Linux receiver, open a tunnel from your computer first:
+By default, the page is available on the receiver's private LAN and VPN
+addresses, but not on public network interfaces. Open this address on any
+computer or phone connected to the same home network:
 
-```bash
-ssh -L 54321:127.0.0.1:54321 pi@YOUR_RECEIVER_IP
+```text
+http://YOUR_RECEIVER_IP:54321
 ```
 
-Then open `http://127.0.0.1:54321` on your computer. Keep the SSH window open.
+For example: `http://192.168.1.25:54321`. On Linux, `hostname -I` displays the
+receiver's addresses. Tailscale addresses are supported as well.
 
-To make the page reachable directly from other devices in a trusted home LAN,
-install or update with:
+The page has no password. It contains only feeder status and a masked account
+identifier, but you should still never forward port `54321` on your router. To
+restrict the page back to the receiver itself, install or update with:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/br3jski/radarview/main/radarview_setup.sh | sudo bash -s -- --status-listen 0.0.0.0:54321
+curl -fsSL https://raw.githubusercontent.com/br3jski/radarview/main/radarview_setup.sh | sudo bash -s -- --status-listen 127.0.0.1:54321
 ```
 
-The LAN page has no password, so do not expose port `54321` to the internet.
 When a newer feeder is available, the dashboard shows **UPDATE AVAILABLE**.
 Click it for the manual update command. The feeder never updates itself.
 
