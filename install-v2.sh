@@ -76,7 +76,12 @@ case "$SOURCE_MODE" in auto|beast|sbs) ;; *) fail "Source mode must be auto, bea
 valid_port "$BEAST_PORT" || fail "Invalid Beast port."
 valid_port "$SBS_PORT" || fail "Invalid SBS port."
 is_safe_line "$FEEDER_LABEL" || fail "Invalid feeder label."
-[[ "$WAIT_SECONDS" =~ ^[0-9]+$ ]] && [ "$WAIT_SECONDS" -ge 5 ] && [ "$WAIT_SECONDS" -le 600 ] || fail "Wait time must be between 5 and 600 seconds."
+if ! [[ "$WAIT_SECONDS" =~ ^[0-9]+$ ]]; then
+  fail "Wait time must be between 5 and 600 seconds."
+fi
+if [ "$WAIT_SECONDS" -lt 5 ] || [ "$WAIT_SECONDS" -gt 600 ]; then
+  fail "Wait time must be between 5 and 600 seconds."
+fi
 
 for command_name in systemctl install getent useradd groupadd sed grep date; do
   command -v "$command_name" >/dev/null 2>&1 || fail "$command_name is required."

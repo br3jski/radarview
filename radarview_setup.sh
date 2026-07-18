@@ -65,7 +65,7 @@ if ! command -v curl >/dev/null 2>&1 || ! command -v openssl >/dev/null 2>&1; th
   fi
 fi
 
-REPOSITORY_URL="${REPOSITORY_URL:-https://github.com/br3jski/radarview/releases/download/v${VERSION}}"
+REPOSITORY_URL="${REPOSITORY_URL:-https://raw.githubusercontent.com/br3jski/radarview/main/releases/v${VERSION}}"
 ASSET="adsbpro-feeder-${VERSION}-${PLATFORM}.tar.gz"
 CHECKSUMS="SHA256SUMS-${VERSION}"
 TEMP_DIR=$(mktemp -d)

@@ -49,7 +49,7 @@ build arm 7
 
 (
   cd "$OUTPUT_DIR"
-  sha256sum adsbpro-feeder-"$VERSION"-* > "SHA256SUMS-${VERSION}"
+  sha256sum adsbpro-feeder-"$VERSION"-*.tar.gz > "SHA256SUMS-${VERSION}"
 )
 
 if [ "${RELEASE:-false}" = true ]; then

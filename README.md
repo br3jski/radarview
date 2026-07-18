@@ -95,4 +95,5 @@ For a signed release, set `RELEASE=true` and point `RELEASE_SIGNING_KEY` at the
 ECDSA P-256 release signing key. The public verification key is committed in
 `packaging/release-signing-public.pem` and embedded in the public bootstrap
 installer. Release signatures use ECDSA with SHA-256 and are verified by
-OpenSSL.
+OpenSSL. Public packages are stored under `releases/vVERSION`; a GitHub Release
+can be added as an optional mirror without changing the trust model.
