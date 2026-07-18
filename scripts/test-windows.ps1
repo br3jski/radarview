@@ -1,3 +1,6 @@
+[CmdletBinding()]
+param([switch]$PowerShellOnly)
+
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version 2.0
 
@@ -8,15 +11,6 @@ foreach ($script in @("radarview_setup.ps1", "install-windows.ps1", "rollback-wi
         throw "PowerShell parser errors in ${script}: $($errors -join '; ')"
     }
 }
-
-go test ./...
-if ($LASTEXITCODE -ne 0) { throw "Go tests failed." }
-
-$binary = Join-Path $env:RUNNER_TEMP "adsbpro-feeder.exe"
-go build -trimpath -o $binary ./cmd/adsbpro-feeder
-if ($LASTEXITCODE -ne 0) { throw "Windows build failed." }
-$version = & $binary version
-if ($LASTEXITCODE -ne 0 -or $version.Trim() -ne "2.1.0") { throw "Windows binary smoke test failed." }
 
 . ./radarview_setup.ps1 -FunctionsOnly
 $manifest = Resolve-Path "releases/v2.0.0/SHA256SUMS-2.0.0"
@@ -29,6 +23,20 @@ $tampered = Join-Path $env:RUNNER_TEMP "SHA256SUMS-tampered"
 if (Test-ReleaseSignature -ManifestPath $tampered -SignaturePath $signature) {
     throw "Tampered release manifest was accepted."
 }
+
+if ($PowerShellOnly) {
+    Write-Host "Windows PowerShell compatibility tests passed."
+    return
+}
+
+go test ./...
+if ($LASTEXITCODE -ne 0) { throw "Go tests failed." }
+
+$binary = Join-Path $env:RUNNER_TEMP "adsbpro-feeder.exe"
+go build -trimpath -o $binary ./cmd/adsbpro-feeder
+if ($LASTEXITCODE -ne 0) { throw "Windows build failed." }
+$version = & $binary version
+if ($LASTEXITCODE -ne 0 -or $version.Trim() -ne "2.1.0") { throw "Windows binary smoke test failed." }
 
 $serviceName = "ADSBProFeeder"
 $stateRoot = Join-Path $env:ProgramData "ADSBPro\Feeder"

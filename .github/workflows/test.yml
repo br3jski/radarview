@@ -28,6 +28,9 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: Test Windows PowerShell 5 compatibility
+        shell: powershell
+        run: ./scripts/test-windows.ps1 -PowerShellOnly
       - name: Test and build Windows client
         shell: pwsh
         run: ./scripts/test-windows.ps1
