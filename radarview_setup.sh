@@ -81,8 +81,8 @@ curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
 
 cat > "$TEMP_DIR/release-signing-public.pem" <<'EOF'
 -----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwdJsBoq27ca5SsbOv+v6MsiuCx2u
-sKMbr69tLhqXBC2X3o6PZGaNg3K2srF0zjb6Y2musEm9opwy42NUVaX83A==
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEALxrl9GRfyNYL59JR5sM5r30Y4cn
+DBMIDp9ZsnJLfDfurnFybd3xX4t0H7QiNs3NYAGJ6WDPl7SElmZG2GaYnQ==
 -----END PUBLIC KEY-----
 EOF
 openssl dgst -sha256 \

@@ -13,8 +13,8 @@ foreach ($script in @("radarview_setup.ps1", "install-windows.ps1", "rollback-wi
 }
 
 . ./radarview_setup.ps1 -FunctionsOnly
-$manifest = Resolve-Path "releases/v2.0.0/SHA256SUMS-2.0.0"
-$signature = Resolve-Path "releases/v2.0.0/SHA256SUMS-2.0.0.sig"
+$manifest = Resolve-Path "releases/v2.1.0/SHA256SUMS-2.1.0"
+$signature = Resolve-Path "releases/v2.1.0/SHA256SUMS-2.1.0.sig"
 if (-not (Test-ReleaseSignature -ManifestPath $manifest -SignaturePath $signature)) {
     throw "Windows release signature verification failed."
 }

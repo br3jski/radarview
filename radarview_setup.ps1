@@ -77,7 +77,7 @@ function Convert-DerEcdsaSignature {
 function Test-ReleaseSignature {
     param([string]$ManifestPath, [string]$SignaturePath)
     # ECDSA P-256 release public key encoded as a Windows CNG ECCPUBLICBLOB.
-    $publicBlob = [Convert]::FromBase64String("RUNTMSAAAADB0mwGirbtxrlKxs6/6/oyyK4LHa6woxuvr20uGpcELZfejo9kZo2DcraysXTONvpjaa6wSb2inDLjY1RVpfzc")
+    $publicBlob = [Convert]::FromBase64String("RUNTMSAAAAAAvGuX0ZF/I1gvn0lHmwzmvfRjhycMEwgOn1myckt8N+6ucXJt3fFfi3QftCI2zc1gAYnpYM+XtISWZkbYZpid")
     $key = [Security.Cryptography.CngKey]::Import($publicBlob, [Security.Cryptography.CngKeyBlobFormat]::EccPublicBlob)
     $ecdsa = New-Object Security.Cryptography.ECDsaCng -ArgumentList $key
     try {

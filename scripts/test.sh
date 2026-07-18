@@ -27,6 +27,17 @@ bash -n \
 
 go test ./...
 
+CURRENT_VERSION=2.1.0
+CURRENT_RELEASE_DIR="$REPOSITORY_DIR/releases/v${CURRENT_VERSION}"
+openssl dgst -sha256 \
+  -verify packaging/release-signing-public.pem \
+  -signature "$CURRENT_RELEASE_DIR/SHA256SUMS-${CURRENT_VERSION}.sig" \
+  "$CURRENT_RELEASE_DIR/SHA256SUMS-${CURRENT_VERSION}"
+(
+  cd "$CURRENT_RELEASE_DIR"
+  sha256sum -c "SHA256SUMS-${CURRENT_VERSION}"
+)
+
 RELEASE_TEST_DIR=$(mktemp -d)
 trap 'rm -rf "$RELEASE_TEST_DIR"' EXIT
 VERSION=2.0.0-test OUTPUT_DIR="$RELEASE_TEST_DIR" ./scripts/build-release.sh
