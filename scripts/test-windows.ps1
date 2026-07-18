@@ -41,8 +41,8 @@ New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
 
 $serviceCommand = '"{0}" service' -f $binary
 try {
-    & sc.exe create $serviceName "binPath= $serviceCommand" "start= demand" "obj= NT AUTHORITY\LocalService" | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "Could not create the Windows test service." }
+    $createOutput = & sc.exe create $serviceName "binPath=" $serviceCommand "start=" "demand" "obj=" "NT AUTHORITY\LocalService" 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Could not create the Windows test service: $($createOutput -join ' ')" }
     Start-Service -Name $serviceName
     (Get-Service -Name $serviceName).WaitForStatus([ServiceProcess.ServiceControllerStatus]::Running, [TimeSpan]::FromSeconds(20))
     Stop-Service -Name $serviceName

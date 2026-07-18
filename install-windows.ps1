@@ -192,13 +192,13 @@ if ($LASTEXITCODE -ne 0) { throw "Could not protect the feeder identity director
 
 $serviceCommand = '"{0}" service' -f $ExecutablePath
 if ($null -eq $previousService) {
-    Invoke-Sc create $ServiceName "binPath= $serviceCommand" "start= auto" "obj= NT AUTHORITY\LocalService" | Out-Null
+    Invoke-Sc create $ServiceName "binPath=" $serviceCommand "start=" "auto" "obj=" "NT AUTHORITY\LocalService" | Out-Null
 }
 else {
-    Invoke-Sc config $ServiceName "binPath= $serviceCommand" "start= auto" "obj= NT AUTHORITY\LocalService" | Out-Null
+    Invoke-Sc config $ServiceName "binPath=" $serviceCommand "start=" "auto" "obj=" "NT AUTHORITY\LocalService" | Out-Null
 }
 Invoke-Sc description $ServiceName "Sends local ADS-B data to ADS-B.Pro using feeder protocol v2." | Out-Null
-Invoke-Sc failure $ServiceName "reset= 86400" "actions= restart/5000/restart/15000/restart/60000" | Out-Null
+Invoke-Sc failure $ServiceName "reset=" "86400" "actions=" "restart/5000/restart/15000/restart/60000" | Out-Null
 
 Remove-Item -LiteralPath (Join-Path $DataDir "status.json") -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath (Join-Path $DataDir "status.json.new") -Force -ErrorAction SilentlyContinue
