@@ -4,6 +4,15 @@ set -euo pipefail
 CASE="${1:?case required}"
 install -d -m 0755 /fakebin /etc/systemd/system /opt /run/fake-systemctl
 install -m 0755 /repo/scripts/testdata/fake-systemctl /fakebin/systemctl
+cat > /fakebin/hostname <<'EOF'
+#!/usr/bin/env bash
+if [ "${1:-}" = -I ]; then
+  printf '%s\n' '203.0.113.8 192.168.50.25 100.100.20.10'
+  exit 0
+fi
+exec /bin/hostname "$@"
+EOF
+chmod 0755 /fakebin/hostname
 printf '%s\n' '[Service]' > /etc/systemd/system/radarview.service
 printf '%s\n' "USER_TOKEN = 'ADS-test-token-value'" > /opt/radarview.py
 touch /run/fake-systemctl/radarview.service.active /run/fake-systemctl/radarview.service.enabled
@@ -21,6 +30,8 @@ case "$CASE" in
     test "$(stat -c %a /var/lib/adsbpro-feeder)" = 700
     test "$(stat -c %a /usr/local/sbin/adsbpro-feeder-rollback)" = 750
     grep -Fxq 'STATUS_LISTEN=private:54321' /etc/adsbpro-feeder/config.env
+    printf '%s\n' "$OUTPUT" | grep -Fq 'Status page: http://192.168.50.25:54321'
+    ! printf '%s\n' "$OUTPUT" | grep -Fq 'YOUR_RECEIVER_IP'
     find /var/backups/adsbpro-feeder -name radarview.py -print -quit | grep -q .
     ;;
   upgrade-private-default)

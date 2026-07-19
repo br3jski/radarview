@@ -32,6 +32,41 @@ fail() {
   exit 1
 }
 
+is_private_status_ipv4() {
+  local address="$1"
+  local first second third fourth
+  if [[ ! "$address" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]]; then
+    return 1
+  fi
+  first=$((10#${BASH_REMATCH[1]}))
+  second=$((10#${BASH_REMATCH[2]}))
+  third=$((10#${BASH_REMATCH[3]}))
+  fourth=$((10#${BASH_REMATCH[4]}))
+  if (( first > 255 || second > 255 || third > 255 || fourth > 255 )); then
+    return 1
+  fi
+  (( first == 10 )) ||
+    (( first == 172 && second >= 16 && second <= 31 )) ||
+    (( first == 192 && second == 168 )) ||
+    (( first == 100 && second >= 64 && second <= 127 )) ||
+    (( first == 169 && second == 254 ))
+}
+
+private_status_ipv4() {
+  local address_list address
+  local -a addresses
+  command -v hostname >/dev/null 2>&1 || return 1
+  address_list=$(hostname -I 2>/dev/null) || return 1
+  read -r -a addresses <<< "$address_list"
+  for address in "${addresses[@]}"; do
+    if is_private_status_ipv4 "$address"; then
+      printf '%s' "$address"
+      return 0
+    fi
+  done
+  return 1
+}
+
 VERSION="${ADSBPRO_VERSION:-2.2.3}"
 INSTALLER_ARGS=()
 while [ "$#" -gt 0 ]; do
@@ -87,13 +122,19 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEALxrl9GRfyNYL59JR5sM5r30Y4cn
 DBMIDp9ZsnJLfDfurnFybd3xX4t0H7QiNs3NYAGJ6WDPl7SElmZG2GaYnQ==
 -----END PUBLIC KEY-----
 EOF
-openssl dgst -sha256 \
+if ! openssl dgst -sha256 \
   -verify "$TEMP_DIR/release-signing-public.pem" \
   -signature "$TEMP_DIR/$CHECKSUMS.sig" \
-  "$TEMP_DIR/$CHECKSUMS"
+  "$TEMP_DIR/$CHECKSUMS" >/dev/null 2>&1; then
+  fail "Release manifest signature verification failed."
+fi
+echo "Release signature verified."
 (
   cd "$TEMP_DIR"
-  grep -F "  $ASSET" "$CHECKSUMS" | grep -E "^[0-9a-fA-F]{64}  ${ASSET}$" | sha256sum -c -
+  if ! grep -F "  $ASSET" "$CHECKSUMS" | grep -E "^[0-9a-fA-F]{64}  ${ASSET}$" | sha256sum -c - >/dev/null 2>&1; then
+    fail "Downloaded package checksum verification failed."
+  fi
+  echo "Package checksum verified."
 )
 
 install -d -m 0700 "$TEMP_DIR/package"
@@ -101,6 +142,14 @@ tar -xzf "$TEMP_DIR/$ASSET" -C "$TEMP_DIR/package"
 [ -x "$TEMP_DIR/package/install-v2.sh" ] || fail "Verified package does not contain install-v2.sh."
 [ -x "$TEMP_DIR/package/adsbpro-feeder" ] || fail "Verified package does not contain the feeder binary."
 
+STATUS_PAGE_IP=$(private_status_ipv4 || true)
 "$TEMP_DIR/package/install-v2.sh" \
   --binary "$TEMP_DIR/package/adsbpro-feeder" \
-  "${INSTALLER_ARGS[@]}"
+  "${INSTALLER_ARGS[@]}" |
+  while IFS= read -r output_line || [ -n "$output_line" ]; do
+    if [[ "$output_line" = "Status page: http://YOUR_RECEIVER_IP:"* ]] && [ -n "$STATUS_PAGE_IP" ]; then
+      printf 'Status page: http://%s:%s\n' "$STATUS_PAGE_IP" "${output_line##*:}"
+    else
+      printf '%s\n' "$output_line"
+    fi
+  done

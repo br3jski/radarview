@@ -35,6 +35,41 @@ valid_port() {
   [[ "$1" =~ ^[0-9]+$ ]] && [ "$1" -ge 1 ] && [ "$1" -le 65535 ]
 }
 
+is_private_status_ipv4() {
+  local address="$1"
+  local first second third fourth
+  if [[ ! "$address" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]]; then
+    return 1
+  fi
+  first=$((10#${BASH_REMATCH[1]}))
+  second=$((10#${BASH_REMATCH[2]}))
+  third=$((10#${BASH_REMATCH[3]}))
+  fourth=$((10#${BASH_REMATCH[4]}))
+  if (( first > 255 || second > 255 || third > 255 || fourth > 255 )); then
+    return 1
+  fi
+  (( first == 10 )) ||
+    (( first == 172 && second >= 16 && second <= 31 )) ||
+    (( first == 192 && second == 168 )) ||
+    (( first == 100 && second >= 64 && second <= 127 )) ||
+    (( first == 169 && second == 254 ))
+}
+
+private_status_ipv4() {
+  local address_list address
+  local -a addresses
+  command -v hostname >/dev/null 2>&1 || return 1
+  address_list=$(hostname -I 2>/dev/null) || return 1
+  read -r -a addresses <<< "$address_list"
+  for address in "${addresses[@]}"; do
+    if is_private_status_ipv4 "$address"; then
+      printf '%s' "$address"
+      return 0
+    fi
+  done
+  return 1
+}
+
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 EXISTING_CONFIG=/etc/adsbpro-feeder/config.env
 
@@ -300,7 +335,11 @@ echo "Feeder v2 is ACTIVE. Legacy files were retained for rollback."
 echo "Backup: $BACKUP_DIR"
 echo "Status: /usr/local/bin/adsbpro-feeder status"
 if [[ "$STATUS_LISTEN" = private:* ]]; then
-  echo "Status page: http://YOUR_RECEIVER_IP:$STATUS_PORT"
+  if STATUS_PAGE_IP=$(private_status_ipv4); then
+    echo "Status page: http://$STATUS_PAGE_IP:$STATUS_PORT"
+  else
+    echo "Status page: http://YOUR_RECEIVER_IP:$STATUS_PORT"
+  fi
 else
   echo "Status page: http://$STATUS_LISTEN"
 fi
