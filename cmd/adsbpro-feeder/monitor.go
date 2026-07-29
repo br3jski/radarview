@@ -51,8 +51,7 @@ type runtimeMonitor struct {
 	reconnects      uint64
 	rateBuckets     [10]rateBucket
 	beastEscape     bool
-	aircraftCount   *int
-	aircraftSource  string
+	aircraftTracker *aircraftTracker
 	latestVersion   string
 	updateCheckedAt time.Time
 }
@@ -84,18 +83,19 @@ type updateSnapshot struct {
 }
 
 type apiStatus struct {
-	Version        string          `json:"version"`
-	State          string          `json:"state"`
-	StateUpdatedAt string          `json:"stateUpdatedAt"`
-	StartedAt      string          `json:"startedAt"`
-	ConnectedAt    string          `json:"connectedAt,omitempty"`
-	InstallationID string          `json:"installationId"`
-	Label          string          `json:"label"`
-	AccountDisplay string          `json:"accountDisplay,omitempty"`
-	Error          string          `json:"error,omitempty"`
-	Source         sourceSnapshot  `json:"source"`
-	Traffic        trafficSnapshot `json:"traffic"`
-	Update         updateSnapshot  `json:"update"`
+	Version        string                  `json:"version"`
+	State          string                  `json:"state"`
+	StateUpdatedAt string                  `json:"stateUpdatedAt"`
+	StartedAt      string                  `json:"startedAt"`
+	ConnectedAt    string                  `json:"connectedAt,omitempty"`
+	InstallationID string                  `json:"installationId"`
+	Label          string                  `json:"label"`
+	AccountDisplay string                  `json:"accountDisplay,omitempty"`
+	Error          string                  `json:"error,omitempty"`
+	Source         sourceSnapshot          `json:"source"`
+	Traffic        trafficSnapshot         `json:"traffic"`
+	Aircraft       aircraftTrafficSnapshot `json:"aircraftTraffic"`
+	Update         updateSnapshot          `json:"update"`
 }
 
 func newRuntimeMonitor(configuration config, installationID string) *runtimeMonitor {
@@ -104,6 +104,7 @@ func newRuntimeMonitor(configuration config, installationID string) *runtimeMoni
 		dataDir: configuration.DataDir, installationID: installationID,
 		label: configuration.Label, sourceConfig: configuration.Source,
 		startedAt: now, state: "starting", stateUpdatedAt: now,
+		aircraftTracker: newAircraftTracker(),
 	}
 }
 
@@ -163,6 +164,7 @@ func (monitor *runtimeMonitor) recordPayload(payload []byte, format string) {
 		bucket.frames += frames
 	}
 	monitor.mu.Unlock()
+	monitor.aircraftTracker.recordForwarded(payload, format, now)
 }
 
 func (monitor *runtimeMonitor) countFrames(payload []byte, format string) uint64 {
@@ -193,13 +195,6 @@ func (monitor *runtimeMonitor) countFrames(payload []byte, format string) uint64
 	return count
 }
 
-func (monitor *runtimeMonitor) setAircraft(count *int, sourceName string) {
-	monitor.mu.Lock()
-	monitor.aircraftCount = count
-	monitor.aircraftSource = sourceName
-	monitor.mu.Unlock()
-}
-
 func (monitor *runtimeMonitor) setLatest(versionValue string, checkedAt time.Time) {
 	monitor.mu.Lock()
 	monitor.latestVersion = versionValue
@@ -209,7 +204,6 @@ func (monitor *runtimeMonitor) setLatest(versionValue string, checkedAt time.Tim
 
 func (monitor *runtimeMonitor) snapshot() apiStatus {
 	monitor.mu.Lock()
-	defer monitor.mu.Unlock()
 	now := time.Now()
 	var recentFrames uint64
 	var recentBytes uint64
@@ -223,34 +217,49 @@ func (monitor *runtimeMonitor) snapshot() apiStatus {
 	if monitor.inputFormat == "sbs" {
 		port = monitor.sourceConfig.SBSPort
 	}
+	state := monitor.state
+	errorMessage := monitor.errorMessage
+	stateUpdatedAt := monitor.stateUpdatedAt
+	inputFormat := monitor.inputFormat
+	accountDisplay := monitor.accountDisplay
+	connectedAt := monitor.connectedAt
+	lastFrameAt := monitor.lastFrameAt
+	framesForwarded := monitor.framesForwarded
+	bytesForwarded := monitor.bytesForwarded
+	reconnects := monitor.reconnects
+	latestVersion := monitor.latestVersion
+	updateCheckedAt := monitor.updateCheckedAt
+	monitor.mu.Unlock()
+	aircraft := monitor.aircraftTracker.snapshot(now, state, errorMessage)
 	snapshot := apiStatus{
-		Version: version, State: monitor.state, StateUpdatedAt: monitor.stateUpdatedAt.Format(time.RFC3339Nano),
+		Version: version, State: state, StateUpdatedAt: stateUpdatedAt.Format(time.RFC3339Nano),
 		StartedAt: monitor.startedAt.Format(time.RFC3339Nano), InstallationID: monitor.installationID,
-		Label: monitor.label, AccountDisplay: monitor.accountDisplay, Error: monitor.errorMessage,
+		Label: monitor.label, AccountDisplay: accountDisplay, Error: errorMessage,
 		Source: sourceSnapshot{
-			Host: monitor.sourceConfig.Host, Mode: monitor.sourceConfig.Mode, Format: monitor.inputFormat,
-			Port: port, Aircraft: monitor.aircraftCount, AircraftBy: monitor.aircraftSource,
+			Host: monitor.sourceConfig.Host, Mode: monitor.sourceConfig.Mode, Format: inputFormat,
+			Port: port, Aircraft: aircraft.Count, AircraftBy: aircraft.Source,
 		},
 		Traffic: trafficSnapshot{
-			Frames: monitor.framesForwarded, Bytes: monitor.bytesForwarded,
+			Frames: framesForwarded, Bytes: bytesForwarded,
 			MessagesPerSecond:     float64(recentFrames) / float64(len(monitor.rateBuckets)),
 			PayloadBytesPerSecond: float64(recentBytes) / float64(len(monitor.rateBuckets)),
-			Reconnects:            monitor.reconnects,
+			Reconnects:            reconnects,
 		},
+		Aircraft: aircraft,
 		Update: updateSnapshot{
-			Available: newerVersion(monitor.latestVersion, version), Latest: monitor.latestVersion,
+			Available: newerVersion(latestVersion, version), Latest: latestVersion,
 			LinuxCommand: "curl -fsSL https://raw.githubusercontent.com/br3jski/radarview/main/radarview_setup.sh | sudo bash",
 			WinCommand:   "irm https://raw.githubusercontent.com/br3jski/radarview/main/radarview_setup.ps1 | iex",
 		},
 	}
-	if !monitor.connectedAt.IsZero() {
-		snapshot.ConnectedAt = monitor.connectedAt.Format(time.RFC3339Nano)
+	if !connectedAt.IsZero() {
+		snapshot.ConnectedAt = connectedAt.Format(time.RFC3339Nano)
 	}
-	if !monitor.lastFrameAt.IsZero() {
-		snapshot.Source.LastFrame = monitor.lastFrameAt.Format(time.RFC3339Nano)
+	if !lastFrameAt.IsZero() {
+		snapshot.Source.LastFrame = lastFrameAt.Format(time.RFC3339Nano)
 	}
-	if !monitor.updateCheckedAt.IsZero() {
-		snapshot.Update.LastChecked = monitor.updateCheckedAt.Format(time.RFC3339Nano)
+	if !updateCheckedAt.IsZero() {
+		snapshot.Update.LastChecked = updateCheckedAt.Format(time.RFC3339Nano)
 	}
 	return snapshot
 }

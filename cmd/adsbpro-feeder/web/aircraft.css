@@ -1,0 +1,154 @@
+.aircraft-panel {
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid #172330;
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(12, 19, 27, .96), rgba(3, 6, 9, .98));
+  box-shadow: inset 0 1px rgba(255, 255, 255, .025);
+}
+
+.not-sent-panel {
+  border-color: #30291c;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 24px;
+  border-bottom: 1px solid #172330;
+}
+
+.panel-heading h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: .015em;
+}
+
+.panel-heading h2 span {
+  display: inline-flex;
+  min-width: 28px;
+  height: 28px;
+  margin-left: 8px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #19506b;
+  border-radius: 999px;
+  color: #65d7ff;
+  background: #08202c;
+  font-size: .73rem;
+}
+
+.panel-heading > p {
+  overflow: hidden;
+  max-width: 52%;
+  margin: 0;
+  color: #718092;
+  font-size: .8rem;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.table-scroll table {
+  width: 100%;
+  min-width: 1120px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.table-scroll th,
+.table-scroll td {
+  height: 50px;
+  padding: 0 14px;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(32, 48, 62, .64);
+  color: #b9c7d5;
+  font-size: .78rem;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-scroll th {
+  height: 42px;
+  color: #718092;
+  background: rgba(2, 5, 8, .7);
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.table-scroll tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table-scroll tbody tr:hover td {
+  background: rgba(26, 175, 235, .055);
+}
+
+.table-scroll td.icao {
+  color: #67d8ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+
+.table-scroll td.reason {
+  color: #ffbd72;
+}
+
+.table-scroll td.empty {
+  height: 76px;
+  color: #718092;
+  text-align: center;
+}
+
+.table-scroll th:nth-child(1) { width: 88px; }
+.table-scroll th:nth-child(2) { width: 105px; }
+.table-scroll th:nth-child(3) { width: 105px; }
+.table-scroll th:nth-child(4),
+.table-scroll th:nth-child(5) { width: 88px; }
+.table-scroll th:nth-child(6) { width: 105px; }
+.table-scroll th:nth-child(7) { width: 105px; }
+.table-scroll th:nth-child(8),
+.table-scroll th:nth-child(9) { width: 105px; }
+.table-scroll th:nth-child(10) { width: 110px; }
+
+.not-sent-panel .table-scroll table {
+  min-width: 1320px;
+}
+
+.not-sent-panel .table-scroll th:last-child {
+  width: 270px;
+}
+
+@media (max-width: 620px) {
+  .panel-heading {
+    display: block;
+    padding: 18px;
+  }
+
+  .panel-heading > p {
+    max-width: none;
+    margin-top: 9px;
+    text-align: left;
+  }
+
+  .aircraft-panel {
+    border-radius: 16px;
+  }
+
+  .table-scroll th,
+  .table-scroll td {
+    height: 46px;
+    padding: 0 11px;
+  }
+}

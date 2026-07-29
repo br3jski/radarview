@@ -23,7 +23,9 @@ import (
 	"github.com/br3jski/radarview/internal/source"
 )
 
-var version = "2.2.3"
+var version = "2.2.4"
+
+const serverHeartbeatTimeout = 90 * time.Second
 
 type config struct {
 	ServerAddress string
@@ -207,6 +209,9 @@ func runSession(parent context.Context, configuration config, identityValue *ide
 	if ready.Type != "READY" {
 		return errors.New("server did not confirm readiness")
 	}
+	if ready.HeartbeatIntervalSeconds < 0 || ready.HeartbeatIntervalSeconds > 300 {
+		return errors.New("invalid server heartbeat interval")
+	}
 	if operation == "pair" {
 		if err := os.WriteFile(pairedPath, []byte(ready.InstallationID), 0600); err != nil {
 			return err
@@ -220,11 +225,17 @@ func runSession(parent context.Context, configuration config, identityValue *ide
 	closeConnection := func() { closeOnce.Do(func() { cancel(); _ = tlsConnection.Close() }) }
 	serverResult := make(chan error, 1)
 	activeSignal := make(chan struct{}, 1)
+	heartbeatEnabled := ready.HeartbeatIntervalSeconds > 0
+	if heartbeatEnabled {
+		if err := tlsConnection.SetReadDeadline(time.Now().Add(serverHeartbeatTimeout)); err != nil {
+			return err
+		}
+	}
 	go func() {
 		active := false
 		for {
-			var message protocol.ServerMessage
-			if err := protocol.ReadControl(reader, &message); err != nil {
+			message, err := readSessionMessage(reader, tlsConnection, heartbeatEnabled, serverHeartbeatTimeout)
+			if err != nil {
 				serverResult <- err
 				return
 			}
@@ -232,12 +243,19 @@ func runSession(parent context.Context, configuration config, identityValue *ide
 				serverResult <- fmt.Errorf("server ended session: %s", message.Code)
 				return
 			}
+			if message.Type == "HEARTBEAT" {
+				if !heartbeatEnabled {
+					serverResult <- errors.New("unexpected server heartbeat")
+					return
+				}
+				continue
+			}
 			if message.Type != "ACTIVE" || active {
 				serverResult <- errors.New("unexpected server message")
 				return
 			}
 			active = true
-			if err := os.Remove(configuration.TokenFile); err != nil && !errors.Is(err, os.ErrNotExist) {
+			if err := removePairingToken(operation, configuration.TokenFile); err != nil {
 				serverResult <- err
 				return
 			}
@@ -245,6 +263,7 @@ func runSession(parent context.Context, configuration config, identityValue *ide
 			activeSignal <- struct{}{}
 		}
 	}()
+	monitor.aircraftTracker.beginForwarding(sourceConnection.Format)
 	monitoredConnection := &monitoredWriter{Writer: tlsConnection, monitor: monitor, format: sourceConnection.Format}
 	if len(sourceConnection.Prefetched) > 0 {
 		if _, err := monitoredConnection.Write(sourceConnection.Prefetched); err != nil {
@@ -274,6 +293,42 @@ func runSession(parent context.Context, configuration config, identityValue *ide
 			return ctx.Err()
 		}
 	}
+}
+
+func removePairingToken(operation, path string) error {
+	if operation != "pair" {
+		return nil
+	}
+	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
+}
+
+type readDeadlineConnection interface {
+	SetReadDeadline(time.Time) error
+}
+
+func readSessionMessage(
+	reader *bufio.Reader,
+	connection readDeadlineConnection,
+	heartbeatEnabled bool,
+	timeout time.Duration,
+) (protocol.ServerMessage, error) {
+	var message protocol.ServerMessage
+	if err := protocol.ReadControl(reader, &message); err != nil {
+		var networkError net.Error
+		if heartbeatEnabled && errors.As(err, &networkError) && networkError.Timeout() {
+			return message, errors.New("server heartbeat timed out")
+		}
+		return message, err
+	}
+	if heartbeatEnabled {
+		if err := connection.SetReadDeadline(time.Now().Add(timeout)); err != nil {
+			return message, err
+		}
+	}
+	return message, nil
 }
 
 func loadConfig() config {

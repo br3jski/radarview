@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="dark">
   <title>ADS-B.Pro Feeder</title>
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/aircraft.css">
 </head>
 <body>
   <main class="shell">
@@ -33,6 +34,38 @@
     </section>
 
     <p id="error" class="error hidden"></p>
+
+    <section class="aircraft-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">LIVE AIRCRAFT</p>
+          <h2>AIRCRAFT SENT <span id="sent-count">0</span></h2>
+        </div>
+        <p>Frames written to the encrypted ADS-B.Pro connection.</p>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>ICAO</th><th>Callsign</th><th>Altitude</th><th>Speed</th><th>Track</th><th>Distance</th><th>RSSI</th><th>Local msg/s</th><th>Sent msg/s</th><th>Last sent</th></tr></thead>
+          <tbody id="sent-aircraft"><tr><td class="empty" colspan="10">Waiting for aircraft data…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="aircraft-panel not-sent-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">LOCAL DECODER DIAGNOSTICS</p>
+          <h2>AIRCRAFT NOT SENT <span id="not-sent-count">0</span></h2>
+        </div>
+        <p id="aircraft-source-note">Waiting for aircraft.json…</p>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>ICAO</th><th>Callsign</th><th>Altitude</th><th>Speed</th><th>Track</th><th>Distance</th><th>RSSI</th><th>Local msg/s</th><th>Sent msg/s</th><th>Last seen</th><th>Reason</th></tr></thead>
+          <tbody id="not-sent-aircraft"><tr><td class="empty" colspan="11">Waiting for aircraft data…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
   <dialog id="update-dialog">

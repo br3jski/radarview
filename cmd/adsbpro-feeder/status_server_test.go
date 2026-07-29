@@ -28,9 +28,13 @@ func testMonitor(t *testing.T) *runtimeMonitor {
 func TestStatusAPIAndPage(t *testing.T) {
 	monitor := testMonitor(t)
 	monitor.setState("active", "sbs", "", "t***t@e***.com")
-	monitor.recordPayload([]byte("MSG,1\nMSG,2\n"), "sbs")
-	count := 12
-	monitor.setAircraft(&count, "/run/readsb/aircraft.json")
+	now := time.Now()
+	messages := uint64(12)
+	monitor.aircraftTracker.updateMetadata([]aircraftMetadata{{
+		ICAO: "ABCDEF", Supported: true, Callsign: "TEST123", Messages: &messages,
+	}}, "/run/readsb/aircraft.json", now)
+	payload := []byte("MSG,1,1,1,ABCDEF,1\nMSG,2,1,1,ABCDEF,1\n")
+	monitor.recordPayload(payload, "sbs")
 	monitor.setLatest("9.0.0", time.Now())
 
 	server := httptest.NewServer(statusHandler(monitor))
@@ -47,11 +51,14 @@ func TestStatusAPIAndPage(t *testing.T) {
 	if err := json.NewDecoder(response.Body).Decode(&value); err != nil {
 		t.Fatal(err)
 	}
-	if value.State != "active" || value.AccountDisplay != "t***t@e***.com" || value.Source.Aircraft == nil || *value.Source.Aircraft != 12 {
+	if value.State != "active" || value.AccountDisplay != "t***t@e***.com" || value.Source.Aircraft == nil || *value.Source.Aircraft != 1 {
 		t.Fatalf("unexpected snapshot: %#v", value)
 	}
-	if value.Traffic.Frames != 2 || value.Traffic.Bytes != 12 || value.Traffic.PayloadBytesPerSecond != 1.2 || !value.Update.Available {
+	if value.Traffic.Frames != 2 || value.Traffic.Bytes != uint64(len(payload)) || value.Traffic.PayloadBytesPerSecond != float64(len(payload))/10 || !value.Update.Available {
 		t.Fatalf("unexpected counters or update: %#v", value)
+	}
+	if len(value.Aircraft.Sent) != 1 || value.Aircraft.Sent[0].ICAO != "ABCDEF" || len(value.Aircraft.NotSent) != 0 {
+		t.Fatalf("unexpected aircraft traffic: %#v", value.Aircraft)
 	}
 
 	page, err := http.Get(server.URL + "/")
@@ -62,6 +69,9 @@ func TestStatusAPIAndPage(t *testing.T) {
 	body, _ := io.ReadAll(page.Body)
 	if !strings.Contains(string(body), "UPDATE AVAILABLE") || !strings.Contains(string(body), "FEEDER STATUS") {
 		t.Fatalf("status page is missing required content")
+	}
+	if !strings.Contains(string(body), "AIRCRAFT SENT") || !strings.Contains(string(body), "AIRCRAFT NOT SENT") {
+		t.Fatalf("status page is missing aircraft diagnostics")
 	}
 	if strings.Contains(string(body), "No feeder token is stored") || strings.Contains(string(body), "frames forwarded") || strings.Contains(string(body), "ADS-B payload") {
 		t.Fatalf("status page contains removed cumulative text")
@@ -81,6 +91,16 @@ func TestStatusAPIAndPage(t *testing.T) {
 	stylesheet, _ := io.ReadAll(style.Body)
 	if !strings.Contains(string(stylesheet), ".metric{height:190px") || !strings.Contains(string(stylesheet), ".metric{height:145px") || !strings.Contains(string(stylesheet), "white-space:nowrap") {
 		t.Fatalf("status cards do not have fixed, single-line layout rules")
+	}
+
+	aircraftStyle, err := http.Get(server.URL + "/aircraft.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer aircraftStyle.Body.Close()
+	aircraftStylesheet, _ := io.ReadAll(aircraftStyle.Body)
+	if !strings.Contains(string(aircraftStylesheet), "white-space: nowrap") || !strings.Contains(string(aircraftStylesheet), "height: 50px") {
+		t.Fatalf("aircraft rows do not have fixed, single-line layout rules")
 	}
 }
 

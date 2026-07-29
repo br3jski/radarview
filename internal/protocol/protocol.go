@@ -45,12 +45,14 @@ type Proof struct {
 }
 
 type ServerMessage struct {
-	Type            string `json:"type"`
-	Code            string `json:"code,omitempty"`
-	ProtocolVersion int    `json:"protocolVersion,omitempty"`
-	InstallationID  string `json:"installationId,omitempty"`
-	ActivatedAt     string `json:"activatedAt,omitempty"`
-	AccountDisplay  string `json:"accountDisplay,omitempty"`
+	Type                     string `json:"type"`
+	Code                     string `json:"code,omitempty"`
+	ProtocolVersion          int    `json:"protocolVersion,omitempty"`
+	InstallationID           string `json:"installationId,omitempty"`
+	ActivatedAt              string `json:"activatedAt,omitempty"`
+	AccountDisplay           string `json:"accountDisplay,omitempty"`
+	HeartbeatIntervalSeconds int    `json:"heartbeatIntervalSeconds,omitempty"`
+	SentAt                   string `json:"sentAt,omitempty"`
 }
 
 func CanonicalProof(hello Hello, challenge Challenge) []byte {

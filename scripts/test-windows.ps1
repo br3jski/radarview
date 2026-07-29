@@ -13,8 +13,8 @@ foreach ($script in @("radarview_setup.ps1", "install-windows.ps1", "rollback-wi
 }
 
 . ./radarview_setup.ps1 -FunctionsOnly
-$manifest = Resolve-Path "releases/v2.2.3/SHA256SUMS-2.2.3"
-$signature = Resolve-Path "releases/v2.2.3/SHA256SUMS-2.2.3.sig"
+$manifest = Resolve-Path "releases/v2.2.4/SHA256SUMS-2.2.4"
+$signature = Resolve-Path "releases/v2.2.4/SHA256SUMS-2.2.4.sig"
 if (-not (Test-ReleaseSignature -ManifestPath $manifest -SignaturePath $signature)) {
     throw "Windows release signature verification failed."
 }
@@ -36,7 +36,7 @@ $binary = Join-Path $env:RUNNER_TEMP "adsbpro-feeder.exe"
 go build -trimpath -o $binary ./cmd/adsbpro-feeder
 if ($LASTEXITCODE -ne 0) { throw "Windows build failed." }
 $version = & $binary version
-if ($LASTEXITCODE -ne 0 -or $version.Trim() -ne "2.2.3") { throw "Windows binary smoke test failed." }
+if ($LASTEXITCODE -ne 0 -or $version.Trim() -ne "2.2.4") { throw "Windows binary smoke test failed." }
 
 $serviceName = "ADSBProFeeder"
 $stateRoot = Join-Path $env:ProgramData "ADSBPro\Feeder"
@@ -59,7 +59,7 @@ try {
         catch { Start-Sleep -Milliseconds 250 }
     }
     if ($null -eq $statusResponse) { throw "Windows status page did not start." }
-    if ($statusResponse.version -ne "2.2.3" -or [string]::IsNullOrWhiteSpace($statusResponse.installationId)) {
+    if ($statusResponse.version -ne "2.2.4" -or [string]::IsNullOrWhiteSpace($statusResponse.installationId)) {
         throw "Windows status page API smoke test failed."
     }
     $statusPage = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:54321/"
