@@ -25,6 +25,10 @@ bash -n \
   scripts/testdata/install-v2-case.sh \
   scripts/test.sh
 
+node --check cmd/adsbpro-feeder/web/aircraft-sort.js
+node --check cmd/adsbpro-feeder/web/app.js
+node scripts/test-aircraft-sort.js
+
 go test ./...
 
 CURRENT_VERSION=2.2.4

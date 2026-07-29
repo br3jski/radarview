@@ -70,11 +70,14 @@ func TestStatusAPIAndPage(t *testing.T) {
 	if !strings.Contains(string(body), "UPDATE AVAILABLE") || !strings.Contains(string(body), "FEEDER STATUS") {
 		t.Fatalf("status page is missing required content")
 	}
-	if !strings.Contains(string(body), "AIRCRAFT SENT") || !strings.Contains(string(body), "AIRCRAFT NOT SENT") {
+	if !strings.Contains(string(body), "AIRCRAFT SENT <em>TO ADS-B.PRO</em>") || !strings.Contains(string(body), "AIRCRAFT NOT SENT") {
 		t.Fatalf("status page is missing aircraft diagnostics")
 	}
-	if strings.Contains(string(body), "No feeder token is stored") || strings.Contains(string(body), "frames forwarded") || strings.Contains(string(body), "ADS-B payload") {
+	if strings.Contains(string(body), "No feeder token is stored") || strings.Contains(string(body), "frames forwarded") || strings.Contains(string(body), "ADS-B payload") || strings.Contains(string(body), "Frames written to the encrypted") {
 		t.Fatalf("status page contains removed cumulative text")
+	}
+	if strings.Count(string(body), `data-sort-table="sent"`) != 10 || strings.Count(string(body), `data-sort-table="notSent"`) != 11 {
+		t.Fatalf("not every aircraft column is sortable")
 	}
 	if !strings.Contains(string(body), `id="upload-unit"`) {
 		t.Fatalf("status page does not separate the upload rate unit")
@@ -101,6 +104,18 @@ func TestStatusAPIAndPage(t *testing.T) {
 	aircraftStylesheet, _ := io.ReadAll(aircraftStyle.Body)
 	if !strings.Contains(string(aircraftStylesheet), "white-space: nowrap") || !strings.Contains(string(aircraftStylesheet), "height: 50px") {
 		t.Fatalf("aircraft rows do not have fixed, single-line layout rules")
+	}
+	if !strings.Contains(string(aircraftStylesheet), `[aria-sort="ascending"]`) || !strings.Contains(string(aircraftStylesheet), `cursor: pointer`) {
+		t.Fatalf("sortable aircraft headers are not visibly interactive")
+	}
+
+	sortScript, err := http.Get(server.URL + "/aircraft-sort.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sortScript.Body.Close()
+	if sortScript.StatusCode != http.StatusOK {
+		t.Fatalf("aircraft sorting script is unavailable: %d", sortScript.StatusCode)
 	}
 }
 

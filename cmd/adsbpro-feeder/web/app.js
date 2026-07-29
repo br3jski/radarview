@@ -1,6 +1,10 @@
 const byId = id => document.getElementById(id);
 let statusData = null;
 let selectedPlatform = 'linux';
+const aircraftSortState = {
+  sent: { key: 'sentRate', direction: 'desc' },
+  notSent: { key: 'lastSeen', direction: 'desc' },
+};
 
 const formatRate = value => {
   const units = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s'];
@@ -40,9 +44,19 @@ function cell(value, className = '') {
   return element;
 }
 
-function renderAircraftRows(targetId, rows, notSent, unavailable) {
+function updateSortHeaders(tableName) {
+  document.querySelectorAll(`[data-sort-table="${tableName}"]`).forEach(header => {
+    const active = header.dataset.sortKey === aircraftSortState[tableName].key;
+    header.setAttribute('aria-sort', active
+      ? aircraftSortState[tableName].direction === 'asc' ? 'ascending' : 'descending'
+      : 'none');
+  });
+}
+
+function renderAircraftRows(targetId, rows, tableName, notSent, unavailable) {
   const body = byId(targetId);
   body.replaceChildren();
+  updateSortHeaders(tableName);
   if (!rows.length) {
     const row = document.createElement('tr');
     const message = unavailable
@@ -54,7 +68,12 @@ function renderAircraftRows(targetId, rows, notSent, unavailable) {
     body.append(row);
     return;
   }
-  for (const aircraft of rows) {
+  const sortedRows = ADSBProAircraftSort.sortRows(
+    rows,
+    aircraftSortState[tableName].key,
+    aircraftSortState[tableName].direction,
+  );
+  for (const aircraft of sortedRows) {
     const row = document.createElement('tr');
     row.append(
       cell(aircraft.icao || '—', 'icao'),
@@ -82,8 +101,8 @@ function renderAircraft(data) {
   byId('aircraft-source-note').textContent = traffic.metadataAvailable
     ? `Decoder data: ${traffic.source || 'aircraft.json'}`
     : 'aircraft.json unavailable — sent aircraft can still be detected from the outgoing stream';
-  renderAircraftRows('sent-aircraft', sent, false, false);
-  renderAircraftRows('not-sent-aircraft', notSent, true, !traffic.metadataAvailable);
+  renderAircraftRows('sent-aircraft', sent, 'sent', false, false);
+  renderAircraftRows('not-sent-aircraft', notSent, 'notSent', true, !traffic.metadataAvailable);
 }
 
 function render(data) {
@@ -131,6 +150,18 @@ async function refresh() {
 byId('update-button').addEventListener('click', () => byId('update-dialog').showModal());
 byId('linux-tab').addEventListener('click', () => { selectedPlatform = 'linux'; renderCommand(); });
 byId('windows-tab').addEventListener('click', () => { selectedPlatform = 'windows'; renderCommand(); });
+document.querySelectorAll('[data-sort-table]').forEach(header => {
+  const button = header.querySelector('button');
+  button.addEventListener('click', () => {
+    const tableName = header.dataset.sortTable;
+    aircraftSortState[tableName] = ADSBProAircraftSort.nextSort(
+      aircraftSortState[tableName],
+      header.dataset.sortKey,
+    );
+    if (statusData) renderAircraft(statusData);
+    else updateSortHeaders(tableName);
+  });
+});
 byId('copy-command').addEventListener('click', async () => {
   const command = byId('update-command').textContent;
   try {

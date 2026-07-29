@@ -39,13 +39,23 @@
       <div class="panel-heading">
         <div>
           <p class="eyebrow">LIVE AIRCRAFT</p>
-          <h2>AIRCRAFT SENT <span id="sent-count">0</span></h2>
+          <h2>AIRCRAFT SENT <em>TO ADS-B.PRO</em> <span id="sent-count">0</span></h2>
         </div>
-        <p>Frames written to the encrypted ADS-B.Pro connection.</p>
       </div>
       <div class="table-scroll">
-        <table>
-          <thead><tr><th>ICAO</th><th>Callsign</th><th>Altitude</th><th>Speed</th><th>Track</th><th>Distance</th><th>RSSI</th><th>Local msg/s</th><th>Sent msg/s</th><th>Last sent</th></tr></thead>
+        <table aria-label="Aircraft sent to ADS-B.Pro">
+          <thead><tr>
+            <th data-sort-table="sent" data-sort-key="icao" aria-sort="none"><button type="button">ICAO<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="sent" data-sort-key="callsign" aria-sort="none"><button type="button">Callsign<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="sent" data-sort-key="altitude" aria-sort="none"><button type="button">Altitude<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="sent" data-sort-key="speed" aria-sort="none"><button type="button">Speed<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="sent" data-sort-key="track" aria-sort="none"><button type="button">Track<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="sent" data-sort-key="distance" aria-sort="none"><button type="button">Distance<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="sent" data-sort-key="rssi" aria-sort="none"><button type="button">RSSI<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="sent" data-sort-key="localRate" aria-sort="none"><button type="button">Local msg/s<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="sent" data-sort-key="sentRate" aria-sort="descending"><button type="button">Sent msg/s<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="sent" data-sort-key="lastSent" aria-sort="none"><button type="button">Last sent<span class="sort-indicator" aria-hidden="true"></span></button></th>
+          </tr></thead>
           <tbody id="sent-aircraft"><tr><td class="empty" colspan="10">Waiting for aircraft data…</td></tr></tbody>
         </table>
       </div>
@@ -60,8 +70,20 @@
         <p id="aircraft-source-note">Waiting for aircraft.json…</p>
       </div>
       <div class="table-scroll">
-        <table>
-          <thead><tr><th>ICAO</th><th>Callsign</th><th>Altitude</th><th>Speed</th><th>Track</th><th>Distance</th><th>RSSI</th><th>Local msg/s</th><th>Sent msg/s</th><th>Last seen</th><th>Reason</th></tr></thead>
+        <table aria-label="Aircraft not sent to ADS-B.Pro">
+          <thead><tr>
+            <th data-sort-table="notSent" data-sort-key="icao" aria-sort="none"><button type="button">ICAO<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="notSent" data-sort-key="callsign" aria-sort="none"><button type="button">Callsign<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="notSent" data-sort-key="altitude" aria-sort="none"><button type="button">Altitude<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="notSent" data-sort-key="speed" aria-sort="none"><button type="button">Speed<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="notSent" data-sort-key="track" aria-sort="none"><button type="button">Track<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="notSent" data-sort-key="distance" aria-sort="none"><button type="button">Distance<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="notSent" data-sort-key="rssi" aria-sort="none"><button type="button">RSSI<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="notSent" data-sort-key="localRate" aria-sort="none"><button type="button">Local msg/s<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="notSent" data-sort-key="sentRate" aria-sort="none"><button type="button">Sent msg/s<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="notSent" data-sort-key="lastSeen" aria-sort="descending"><button type="button">Last seen<span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th data-sort-table="notSent" data-sort-key="reason" aria-sort="none"><button type="button">Reason<span class="sort-indicator" aria-hidden="true"></span></button></th>
+          </tr></thead>
           <tbody id="not-sent-aircraft"><tr><td class="empty" colspan="11">Waiting for aircraft data…</td></tr></tbody>
         </table>
       </div>
@@ -80,6 +102,7 @@
       <p class="hint">The feeder never installs an update automatically.</p>
     </form>
   </dialog>
+  <script src="/aircraft-sort.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>
